@@ -6,18 +6,21 @@ public class AppDbContext : MongoDbContext
 
     protected override async Task OnInitializedAsync()
     {
-        string[] Summaries =
-        [
-            "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-        ];
-        var mockData = Enumerable.Range(1, 5).Select(index => new WeatherForecast
+        if (!WeatherForecasts.Any())
         {
-            Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            TemperatureC = Random.Shared.Next(-20, 55),
-            Summary = Summaries[Random.Shared.Next(Summaries.Length)]
-        })
-        .ToArray();
+            string[] Summaries =
+            [
+                "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
+            ];
+            var mockData = Enumerable.Range(1, 5).Select(index => new WeatherForecast
+            {
+                Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+                TemperatureC = Random.Shared.Next(-20, 55),
+                Summary = Summaries[Random.Shared.Next(Summaries.Length)]
+            })
+            .ToArray();
 
-        await WeatherForecasts.AddRangeAsync(mockData);
+            await WeatherForecasts.AddRangeAsync(mockData);
+        }
     }
 }
