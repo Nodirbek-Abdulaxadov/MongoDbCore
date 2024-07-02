@@ -49,53 +49,65 @@ public class Collection<T> where T : BaseEntity
 
     #region Mutation
 
-    public void Add(T entity)
+    public T Add(T entity)
     {
-        if (_isCacheable) UpdateCache();
         _collection!.InsertOne(entity);
+        if (_isCacheable) UpdateCache();
+        return entity;
     }
 
-    public Task AddAsync(T entity)
+    public async Task<T> AddAsync(T entity)
     {
+        await _collection!.InsertOneAsync(entity);
         if (_isCacheable) UpdateCache();
-        return _collection!.InsertOneAsync(entity);
+        return entity;
     }
 
-    public void AddRange(IEnumerable<T> entities)
+    public IEnumerable<T> AddRange(IEnumerable<T> entities)
     {
-        if (_isCacheable) UpdateCache();
         _collection!.InsertMany(entities);
+        if (_isCacheable) UpdateCache();
+        return entities;
     }
 
-    public Task AddRangeAsync(IEnumerable<T> entities)
+    public async Task<IEnumerable<T>> AddRangeAsync(IEnumerable<T> entities)
     {
+        await _collection!.InsertManyAsync(entities);
         if (_isCacheable) UpdateCache();
-        return _collection!.InsertManyAsync(entities);
+        return entities;
     }
 
-    public void Update(T entity)
+    public T Update(T entity)
     {
-        if (_isCacheable) UpdateCache();
         _collection!.ReplaceOne(x => x.Id == entity.Id, entity);
+        if (_isCacheable) UpdateCache();
+        return entity;
     }
 
-    public Task UpdateAsync(T entity)
+    public async Task<T> UpdateAsync(T entity)
     {
+        await _collection!.ReplaceOneAsync(x => x.Id == entity.Id, entity);
         if (_isCacheable) UpdateCache();
-        return _collection!.ReplaceOneAsync(x => x.Id == entity.Id, entity);
+        return entity;
     }
 
     public void Delete(string id)
     {
-        if (_isCacheable) UpdateCache();
         _collection!.DeleteOne(Builders<T>.Filter.Eq(x => x.Id, id));
+        if (_isCacheable) UpdateCache();
     }
 
-    public Task DeleteAsync(string id)
+    public async Task DeleteAsync(string id)
     {
+        await _collection!.DeleteOneAsync(Builders<T>.Filter.Eq(x => x.Id, id));
         if (_isCacheable) UpdateCache();
-        return _collection!.DeleteOneAsync(Builders<T>.Filter.Eq(x => x.Id, id));
     }
+
+    public void Delete(T entity)
+        => Delete(entity.Id);
+
+    public Task DeleteAsync(T entity)
+        => DeleteAsync(entity.Id);
 
     #endregion
 
@@ -143,9 +155,9 @@ public class Collection<T> where T : BaseEntity
 
         if (_cache is null)
         {
-            return _collection.Find(FilterDefinition<T>.Empty);
+            _cache = _collection.Find(FilterDefinition<T>.Empty);
         }
-
+        var list = _cache.ToList();
         return _cache;
     }
 
