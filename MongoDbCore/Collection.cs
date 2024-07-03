@@ -28,19 +28,19 @@ public class Collection<T> where T : BaseEntity
         => Get().FirstOrDefault();
 
     public T FirstOrDefault(Expression<Func<T, bool>> predicate)
-        => Get().FirstOrDefault();
+        => Get(predicate).FirstOrDefault();
 
     public Task<T> FirstOrDefaultAsync()
         => Get().FirstOrDefaultAsync();
 
     public Task<T> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate)
-        => Get().FirstOrDefaultAsync();
+        => Get(predicate).FirstOrDefaultAsync();
 
     public bool Any()
         => Get().Any();
 
     public bool Any(Expression<Func<T, bool>> predicate)
-        => Get().Any();
+        => Get(predicate).Any();
 
     public long Count()
         => _collection!.CountDocuments(FilterDefinition<T>.Empty);
@@ -146,16 +146,16 @@ public class Collection<T> where T : BaseEntity
         _cache = _collection.Find(FilterDefinition<T>.Empty);
     }
 
-    private IFindFluent<T, T> Get()
+    private IFindFluent<T, T> Get(FilterDefinition<T>? filter = null)
     {
         if (!_isCacheable)
         {
-            return _collection.Find(FilterDefinition<T>.Empty);
+            return _collection.Find(filter ?? FilterDefinition<T>.Empty);
         }
 
         if (_cache is null)
         {
-            _cache = _collection.Find(FilterDefinition<T>.Empty);
+            _cache = _collection.Find(filter ?? FilterDefinition<T>.Empty);
         }
         var list = _cache.ToList();
         return _cache;
