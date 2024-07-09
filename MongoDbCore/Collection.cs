@@ -1,6 +1,4 @@
-﻿using static Microsoft.AspNetCore.Hosting.Internal.HostingApplication;
-
-namespace MongoDbCore;
+﻿namespace MongoDbCore;
 
 public class Collection<T> where T : BaseEntity
 {
