@@ -1,22 +1,31 @@
-﻿namespace MongoDbCore;
+﻿using static Microsoft.AspNetCore.Hosting.Internal.HostingApplication;
+
+namespace MongoDbCore;
 
 public class Collection<T> where T : BaseEntity
 {
     #region Initialize
 
-    private readonly IMongoCollection<T>? _collection;
+    private IMongoCollection<T>? _collection;
     private readonly bool _isCacheable;
+    private readonly MongoDbContext dbContext;
     private IFindFluent<T, T>? _cache;
 
     public Collection(MongoDbContext dbContext)
     {
         _collection = dbContext.GetCollection<T>(typeof(T).Name.Pluralize().Underscore());
         _isCacheable = CheckCacheablityOfTEntity();
+        this.dbContext = dbContext;
     }
 
     #endregion
 
     #region Queries
+
+    public List<TT> Get<TT>()
+    {
+        return dbContext.GetCollection<TT>(typeof(T).Name.Pluralize().Underscore()).Find(_=>true).ToList();
+    }
 
     public List<T> ToList()
         => Get().ToList();

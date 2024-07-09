@@ -8,6 +8,13 @@ public class WeatherForecastController(AppDbContext dbContext) : ControllerBase
     public async Task<IActionResult> Get()
         => Ok(await dbContext.WeatherForecasts.ToListAsync());
 
+    [HttpGet("get")]
+    public IActionResult Gett()
+    {
+        var result = dbContext.WeatherForecasts.Get<Type2>();
+        return Ok(result);
+    }
+
     [HttpGet("id")]
     public async Task<IActionResult> Get(string id)
     {

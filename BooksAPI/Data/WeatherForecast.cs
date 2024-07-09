@@ -9,21 +9,25 @@ public class WeatherForecast : BaseEntity
 
     public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
 
-    public string? Summary { get; set; }
+    public string? SummaryA { get; set; }
+
+    public string? SummaryB { get; set; }
+
+    public string SummaryC { get; set; }
 }
 
 public class CreateWeatherForecast
 {
     public int TemperatureC { get; set; }
 
-    public string? Summary { get; set; }
+    public string? SummaryA { get; set; }
 
     public static implicit operator WeatherForecast(CreateWeatherForecast model)
         => new()
         {
             Date = DateOnly.FromDateTime(DateTime.Now),
             TemperatureC = model.TemperatureC,
-            Summary = model.Summary
+            SummaryA = model.SummaryA
         };
 }
 
@@ -37,6 +41,6 @@ public class UpdateWeatherForecast : CreateWeatherForecast
             Id = model.Id,
             Date = DateOnly.FromDateTime(DateTime.Now),
             TemperatureC = model.TemperatureC,
-            Summary = model.Summary
+            SummaryA = model.SummaryA
         };
 }
