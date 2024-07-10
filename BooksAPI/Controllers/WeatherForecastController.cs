@@ -34,24 +34,7 @@ public class WeatherForecastController(AppDbContext dbContext) : ControllerBase
     {
         try
         {
-            var entity = (WeatherForecast)model;
-            Stopwatch stopwatch1 = new();
-            Stopwatch stopwatch2 = new();
-
-            stopwatch1.Start();
-            if (dbContext.WeatherForecasts.Any(x => x.Date == entity.Date)) 
-            { }
-            stopwatch1.Stop();
-
-            stopwatch2.Start();
-            if (dbContext.WeatherForecasts.Exists(entity, x => x.Date)) 
-            { }
-            stopwatch2.Stop();
-
-            var time1 = stopwatch1.Elapsed.TotalMilliseconds;
-            var time2 = stopwatch2.Elapsed.TotalMilliseconds;
-
-            var result = await dbContext.WeatherForecasts.AddAsync(entity);
+            var result = await dbContext.WeatherForecasts.AddAsync(model);
             return Ok(result);
         }
         catch (Exception ex)
