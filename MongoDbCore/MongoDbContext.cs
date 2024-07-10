@@ -20,7 +20,9 @@ public abstract class MongoDbContext
         return _database.GetCollection<T>(name);
     }
 
-    internal void OnInitialized() => OnInitializedAsync();
+    internal void Initialize() => OnInitialized();
+
+    protected virtual void OnInitialized() => OnInitializedAsync();
 
     protected virtual Task OnInitializedAsync() => Task.CompletedTask;
 }

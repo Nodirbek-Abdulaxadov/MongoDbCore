@@ -20,11 +20,6 @@ public class Collection<T> where T : BaseEntity
 
     #region Queries
 
-    public List<TT> Get<TT>()
-    {
-        return dbContext.GetCollection<TT>(typeof(T).Name.Pluralize().Underscore()).Find(_=>true).ToList();
-    }
-
     public List<T> ToList()
         => Get().ToList();
 
@@ -49,8 +44,25 @@ public class Collection<T> where T : BaseEntity
     public bool Any(Expression<Func<T, bool>> predicate)
         => Get(predicate).Any();
 
+    public List<TResult> Select<TResult>(Expression<Func<T, TResult>> selector)
+        => Get().ToList().Select(selector.Compile()).ToList();
+
+    public Task<List<TResult>> SelectAsync<TResult>(Expression<Func<T, TResult>> selector)
+        => Task.FromResult(Get().ToList().Select(selector.Compile()).ToList());
+
+    public List<TResult> SelectMany<TResult>(Expression<Func<T, IEnumerable<TResult>>> selector)
+        => Get().ToList().SelectMany(selector.Compile()).ToList();
+
+    public Task<List<TResult>> SelectManyAsync<TResult>(Expression<Func<T, IEnumerable<TResult>>> selector)
+        => Task.FromResult(Get().ToList().SelectMany(selector.Compile()).ToList());
+
     public long Count()
         => _collection!.CountDocuments(FilterDefinition<T>.Empty);
+
+    public List<TT> Get<TT>()
+    {
+        return dbContext.GetCollection<TT>(typeof(T).Name.Pluralize().Underscore()).Find(_=>true).ToList();
+    }
 
     #endregion
 

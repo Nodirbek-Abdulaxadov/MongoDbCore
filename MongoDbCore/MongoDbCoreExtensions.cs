@@ -39,7 +39,7 @@ public static class MongoDbCoreExtensions
                     property.SetValue(dbContext, collectionInstance);
                 }
             }
-            dbContext!.OnInitialized();
+            dbContext!.Initialize();
             return dbContext;
         });
     }
