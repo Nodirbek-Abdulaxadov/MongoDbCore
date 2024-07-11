@@ -23,8 +23,8 @@ public class Collection<T> where T : BaseEntity
     public List<T> ToList()
         => Get().ToList();
 
-    public Task<List<T>> ToListAsync()
-        => Get().ToListAsync();
+    public Task<List<T>> ToListAsync(CancellationToken cancellationToken = default)
+        => Get().ToListAsync(cancellationToken);
 
     public T FirstOrDefault()
         => Get().FirstOrDefault();
@@ -32,11 +32,11 @@ public class Collection<T> where T : BaseEntity
     public T FirstOrDefault(Expression<Func<T, bool>> predicate)
         => Get(predicate).FirstOrDefault();
 
-    public Task<T> FirstOrDefaultAsync()
-        => Get().FirstOrDefaultAsync();
+    public Task<T> FirstOrDefaultAsync(CancellationToken cancellationToken = default)
+        => Get().FirstOrDefaultAsync(cancellationToken);
 
-    public Task<T> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate)
-        => Get(predicate).FirstOrDefaultAsync();
+    public Task<T> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
+        => Get(predicate).FirstOrDefaultAsync(cancellationToken);
 
     public bool Any()
         => Get().Any();
@@ -47,14 +47,8 @@ public class Collection<T> where T : BaseEntity
     public List<TResult> Select<TResult>(Expression<Func<T, TResult>> selector)
         => Get().ToList().Select(selector.Compile()).ToList();
 
-    public Task<List<TResult>> SelectAsync<TResult>(Expression<Func<T, TResult>> selector)
-        => Task.FromResult(Get().ToList().Select(selector.Compile()).ToList());
-
     public List<TResult> SelectMany<TResult>(Expression<Func<T, IEnumerable<TResult>>> selector)
         => Get().ToList().SelectMany(selector.Compile()).ToList();
-
-    public Task<List<TResult>> SelectManyAsync<TResult>(Expression<Func<T, IEnumerable<TResult>>> selector)
-        => Task.FromResult(Get().ToList().SelectMany(selector.Compile()).ToList());
 
     public long Count()
         => _collection!.CountDocuments(FilterDefinition<T>.Empty);
@@ -75,9 +69,9 @@ public class Collection<T> where T : BaseEntity
         return entity;
     }
 
-    public async Task<T> AddAsync(T entity)
+    public async Task<T> AddAsync(T entity, CancellationToken cancellationToken = default)
     {
-        await _collection!.InsertOneAsync(entity);
+        await _collection!.InsertOneAsync(entity, null, cancellationToken);
         if (_isCacheable) UpdateCache();
         return entity;
     }
@@ -89,9 +83,9 @@ public class Collection<T> where T : BaseEntity
         return entities;
     }
 
-    public async Task<IEnumerable<T>> AddRangeAsync(IEnumerable<T> entities)
+    public async Task<IEnumerable<T>> AddRangeAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
     {
-        await _collection!.InsertManyAsync(entities);
+        await _collection!.InsertManyAsync(entities, null, cancellationToken);
         if (_isCacheable) UpdateCache();
         return entities;
     }
@@ -103,9 +97,10 @@ public class Collection<T> where T : BaseEntity
         return entity;
     }
 
-    public async Task<T> UpdateAsync(T entity)
+    public async Task<T> UpdateAsync(T entity, CancellationToken cancellationToken = default)
     {
-        await _collection!.ReplaceOneAsync(x => x.Id == entity.Id, entity);
+        var replaceOptions = new ReplaceOptions();
+        await _collection!.ReplaceOneAsync(x => x.Id == entity.Id, entity, replaceOptions, cancellationToken);
         if (_isCacheable) UpdateCache();
         return entity;
     }
@@ -116,17 +111,17 @@ public class Collection<T> where T : BaseEntity
         if (_isCacheable) UpdateCache();
     }
 
-    public async Task DeleteAsync(string id)
+    public async Task DeleteAsync(string id, CancellationToken cancellationToken = default)
     {
-        await _collection!.DeleteOneAsync(Builders<T>.Filter.Eq(x => x.Id, id));
+        await _collection!.DeleteOneAsync(Builders<T>.Filter.Eq(x => x.Id, id), cancellationToken);
         if (_isCacheable) UpdateCache();
     }
 
     public void Delete(T entity)
         => Delete(entity.Id);
 
-    public Task DeleteAsync(T entity)
-        => DeleteAsync(entity.Id);
+    public Task DeleteAsync(T entity, CancellationToken cancellationToken = default)
+        => DeleteAsync(entity.Id, cancellationToken);
 
     #endregion
 
