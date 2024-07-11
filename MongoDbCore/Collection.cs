@@ -1,4 +1,6 @@
-﻿namespace MongoDbCore;
+﻿using System.Reflection;
+
+namespace MongoDbCore;
 
 public class Collection<T> where T : BaseEntity
 {
@@ -127,6 +129,19 @@ public class Collection<T> where T : BaseEntity
 
     #region Extensions
 
+    public IFindFluent<T, T> Include(Expression<Func<T, object>> includeExpression)
+    {
+        // Extract the property name from the expressionstring
+        var  propertyName = GetPropertyName(includeExpression);
+
+        // Perform additional query to fetch related documents or fields
+        var projection = Builders<T>.Projection.Include(propertyName);
+
+        var result = _collection.Find(_ => true).Project<T>(projection);
+
+        return result;
+    }
+
     public IFindFluent<T, T> AsFindFluent()
         => _collection.Find(_ => true);
 
@@ -160,20 +175,28 @@ public class Collection<T> where T : BaseEntity
         _cache = _collection.Find(FilterDefinition<T>.Empty);
     }
 
-    private IFindFluent<T, T> Get(FilterDefinition<T>? filter = null)
+    private string GetPropertyName(Expression<Func<T, object>> propertyExpression)
     {
-        if (!_isCacheable)
+        var memberExpression = propertyExpression.Body as MemberExpression;
+        if (memberExpression == null)
         {
-            return _collection.Find(filter ?? FilterDefinition<T>.Empty);
+            throw new ArgumentException("Expression is not a member access expression.", nameof(propertyExpression));
         }
 
-        if (_cache is null)
+        return memberExpression.Member.Name;
+    }
+
+    private IFindFluent<T, T> Get(FilterDefinition<T>? filter = null)
+    {
+        if (!_isCacheable || _cache == null)
         {
             _cache = _collection.Find(filter ?? FilterDefinition<T>.Empty);
         }
+
         var list = _cache.ToList();
         return _cache;
     }
+
 
     #endregion
 }

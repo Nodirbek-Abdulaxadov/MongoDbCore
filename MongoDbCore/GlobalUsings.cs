@@ -6,5 +6,5 @@ global using MongoDB.Bson.Serialization.Attributes;
 global using Microsoft.Extensions.DependencyInjection;
 global using System.ComponentModel.DataAnnotations;
 global using System.Text.RegularExpressions;
-global using MongoDbCore.Caching;
+global using MongoDbCore.Attributes;
 global using MongoDbCore;

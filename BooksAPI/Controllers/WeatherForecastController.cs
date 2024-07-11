@@ -20,7 +20,7 @@ public class WeatherForecastController(AppDbContext dbContext) : ControllerBase
     [HttpGet("id")]
     public async Task<IActionResult> Get(string id)
     {
-        var model = await dbContext.WeatherForecasts.FirstOrDefaultAsync(x => x.Id == id);
+        var model = dbContext.WeatherForecasts.Include(x => x.SomeClass).ToList().FirstOrDefault(x => x.Id == id);
         if (model == null)
         {
             return NotFound();
