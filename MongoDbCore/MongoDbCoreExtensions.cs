@@ -1,26 +1,20 @@
-﻿namespace MongoDbCore;
+﻿namespace EntityFrameworkCore.MongoDb;
 
-public static class MongoDbCoreExtensions
+public static class MongoDbContextOptionsExtensions
 {
-    public static void AddMongoDbContext<TDbContext>(this IServiceCollection services, MongoDbCoreOptions? options = null)
+    public static void AddMongoDbContext<TDbContext>(this IServiceCollection services, MongoDbCoreOptions options)
         where TDbContext : MongoDbContext // Remove the nullable indicator (?) here
     {
+#pragma warning disable CS8634 // The type cannot be used as type parameter in the generic type or method. Nullability of type argument doesn't match 'class' constraint.
+#pragma warning disable CS8621 // Nullability of reference types in return type doesn't match the target delegate (possibly because of nullability attributes).
         services.AddSingleton(provider =>
         {
-            // Create an instance of TDbContext using the provided options
-            TDbContext? dbContext;
-            if (options == null)
-            {
-                options = new();
-                dbContext = Activator.CreateInstance(typeof(TDbContext)) as TDbContext;
-            }
-            else
-            {
-                dbContext = Activator.CreateInstance(typeof(TDbContext), options) as TDbContext;
-            }
-
             var client = new MongoClient(options.Connection);
             var database = client.GetDatabase(options.Database);
+
+            // Create an instance of TDbContext using the provided options
+            var dbContext = Activator.CreateInstance(typeof(TDbContext), options) as TDbContext;
+            dbContext!.HealthCheckDB();
 
             // Get all properties of TDbContext
             var properties = typeof(TDbContext).GetProperties();
@@ -42,5 +36,8 @@ public static class MongoDbCoreExtensions
             dbContext!.Initialize();
             return dbContext;
         });
+#pragma warning restore CS8621 // Nullability of reference types in return type doesn't match the target delegate (possibly because of nullability attributes).
+#pragma warning restore CS8634 // The type cannot be used as type parameter in the generic type or method. Nullability of type argument doesn't match 'class' constraint.
+
     }
 }

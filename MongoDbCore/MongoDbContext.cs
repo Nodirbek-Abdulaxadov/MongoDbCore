@@ -20,6 +20,20 @@ public abstract class MongoDbContext
         return _database.GetCollection<T>(name);
     }
 
+    public void HealthCheckDB()
+    {
+        try
+        {
+            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var databases = _client.ListDatabaseNames(cts.Token);
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Couldn't connect to MongoDB server! {ex.Message}");
+        }
+    }
+
+
     internal void Initialize() => OnInitialized();
 
     protected virtual void OnInitialized() => OnInitializedAsync();
