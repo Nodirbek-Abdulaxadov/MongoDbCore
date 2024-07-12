@@ -20,13 +20,21 @@ public class WeatherForecastController(AppDbContext dbContext) : ControllerBase
     [HttpGet("id")]
     public async Task<IActionResult> Get(string id)
     {
-        var model = dbContext.WeatherForecasts.Include(x => x.SomeClass).ToList().FirstOrDefault(x => x.Id == id);
-        if (model == null)
-        {
-            return NotFound();
-        }
+        //var model = dbContext.WeatherForecasts.Include(x => x.SomeClass).ToList().FirstOrDefault(x => x.Id == id);
+        //if (model == null)
+        //{
+        //    return NotFound();
+        //}
 
-        return Ok(model);
+
+        //return Ok(model);
+
+        WeatherForecast weather = new();
+        var b = weather.GetType() == typeof(BaseEntity);
+        List<WeatherForecast> list = [weather];
+        var a = list.GetType() == typeof(IEnumerable<>);
+
+        return Ok(a + " " + b);
     }
 
     [HttpPost]

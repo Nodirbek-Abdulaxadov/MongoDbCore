@@ -5,6 +5,7 @@ public abstract class MongoDbContext
     private readonly MongoDbCoreOptions _options;
     private IMongoClient _client;
     private IMongoDatabase _database;
+    private static IMongoDatabase? _staticDatabase;
 
     public MongoDbContext() : this(new MongoDbCoreOptions()) { }
 
@@ -13,11 +14,17 @@ public abstract class MongoDbContext
         _options = options;
         _client = new MongoClient(_options.Connection);
         _database = _client.GetDatabase(_options.Database);
+        _staticDatabase = _database;
     }
 
     public IMongoCollection<T> GetCollection<T>(string name)
     {
         return _database.GetCollection<T>(name);
+    }
+
+    public static IMongoCollection<T> GetStaticCollection<T>(string name)
+    {
+        return _staticDatabase!.GetCollection<T>(name);
     }
 
     public void HealthCheckDB()
@@ -32,7 +39,6 @@ public abstract class MongoDbContext
             throw new Exception($"Couldn't connect to MongoDB server! {ex.Message}");
         }
     }
-
 
     internal void Initialize() => OnInitialized();
 

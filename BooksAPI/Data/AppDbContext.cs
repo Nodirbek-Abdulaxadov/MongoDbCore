@@ -3,6 +3,9 @@
 public class AppDbContext : MongoDbContext
 {
     public Collection<WeatherForecast> WeatherForecasts { get; set; } = null!;
+    public Collection<ClassA> ClassAs { get; set; } = null!;
+    public Collection<ClassB> ClassBs { get; set; } = null!;
+    public Collection<ClassC> ClassCs { get; set; } = null!;
 
     protected override async Task OnInitializedAsync()
     {
@@ -21,6 +24,39 @@ public class AppDbContext : MongoDbContext
             .ToArray();
 
             await WeatherForecasts.AddRangeAsync(mockData);
+        }
+
+        if (!ClassAs.Any())
+            {
+            var mockData = Enumerable.Range(1, 5).Select(index => new ClassA
+            {
+                Number = Random.Shared.Next(1, 100)
+            })
+            .ToArray();
+
+            await ClassAs.AddRangeAsync(mockData);
+        }
+
+        if (!ClassBs.Any())
+        {
+            var mockData = Enumerable.Range(1, 5).Select(index => new ClassB
+            {
+                Number = Random.Shared.Next(1, 100)
+            })
+            .ToArray();
+
+            await ClassBs.AddRangeAsync(mockData);
+        }
+
+        if (!ClassCs.Any())
+        {
+            var mockData = Enumerable.Range(1, 5).Select(index => new ClassC
+            {
+                Number = Random.Shared.Next(1, 100)
+            })
+            .ToArray();
+
+            await ClassCs.AddRangeAsync(mockData);
         }
     }
 }

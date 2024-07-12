@@ -7,6 +7,8 @@ public static class MongoDbCoreExtensions
     {
         services.AddSingleton(provider =>
         {
+            StaticServiceLocator.ServiceProvider = provider;
+
             // Create an instance of TDbContext using the provided options
             TDbContext? dbContext;
             if (options == null)

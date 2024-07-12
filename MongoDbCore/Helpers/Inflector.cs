@@ -1,4 +1,4 @@
-﻿namespace MongoDbCore;
+﻿namespace MongoDbCore.Helpers;
 
 internal static class Inflector
 {
