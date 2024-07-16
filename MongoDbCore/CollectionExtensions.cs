@@ -173,10 +173,10 @@ public static class CollectionExtensions
     }
 
 
-    public static List<T> ToList<T>(this IFindFluent<T, T> findFluent, Dictionary<PropertyInfo, dynamic> dict)
+    public static List<T> ToList<T>(this IFindFluent<T, T> findFluent, Dictionary<PropertyInfo, dynamic>? dict = default)
         => ToListFromIAsyncCursorSource(findFluent, dict);
 
-    public static List<TDocument> ToListFromIAsyncCursorSource<TDocument>(this IAsyncCursorSource<TDocument> source, Dictionary<PropertyInfo, dynamic> dict, CancellationToken cancellationToken = default)
+    public static List<TDocument> ToListFromIAsyncCursorSource<TDocument>(this IAsyncCursorSource<TDocument> source, Dictionary<PropertyInfo, dynamic>? dict = default, CancellationToken cancellationToken = default)
     {
         using (var cursor = source.ToCursor(cancellationToken))
         {
@@ -184,7 +184,7 @@ public static class CollectionExtensions
         }
     }
     
-    public static List<TDocument> ToListFromIAsyncCursor<TDocument>(this IAsyncCursor<TDocument> source, Dictionary<PropertyInfo, dynamic> dict, CancellationToken cancellationToken = default)
+    public static List<TDocument> ToListFromIAsyncCursor<TDocument>(this IAsyncCursor<TDocument> source, Dictionary<PropertyInfo, dynamic>? dict = default, CancellationToken cancellationToken = default)
     {
         Ensure.IsNotNull(source, nameof(source));
         var list = new List<TDocument>();
@@ -195,12 +195,15 @@ public static class CollectionExtensions
             {
                 foreach (var item in source.Current)
                 {
-                    foreach (var key in dict.Keys)
+                    if (dict is not null && dict.Any())
                     {
-                        var value = dict[key];
-                        if (value != null)
+                        foreach (var key in dict.Keys)
                         {
-                            key.SetValue(item, value);
+                            var value = dict[key];
+                            if (value != null)
+                            {
+                                key.SetValue(item, value);
+                            }
                         }
                     }
                     list.Add(item);
