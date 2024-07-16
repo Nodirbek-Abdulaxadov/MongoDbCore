@@ -17,7 +17,7 @@ public class TestController(AppDbContext dbContext) : ControllerBase
     [HttpGet("dsss")]
     public IActionResult Gets()
     {
-        var classa = dbContext.ClassAs.Include(x => x.ClassCList).Include(x => x.ClassB).ToList();
+        var classa = dbContext.ClassAs.IncludeRef(x => x.ClassC).ToList();
         return Ok(classa);
     }
 

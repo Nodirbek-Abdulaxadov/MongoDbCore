@@ -34,7 +34,7 @@ public static class CollectionExtensions
         var property = ExtractProperty(includeExpression);
 
         var propertyProperties = typeof(TProperty).GetProperties();
-        var foreignKeyProperties = propertyProperties.Where(x => x.GetCustomAttribute<ForeignKey>() is not null).ToList();
+        var foreignKeyProperties = propertyProperties.Where(x => x.GetCustomAttribute<ForeignKeyTo>() is not null).ToList();
         if (!foreignKeyProperties.Any())
         {
             throw new Exception("Foreign key attribute is not found.");
@@ -98,7 +98,7 @@ public static class CollectionExtensions
         var property = ExtractProperty(includeExpression);
 
         var propertyProperties = typeof(TProperty).GetProperties();
-        var foreignKeyProperties = propertyProperties.Where(x => x.GetCustomAttribute<ForeignKey>() is not null).ToList();
+        var foreignKeyProperties = propertyProperties.Where(x => x.GetCustomAttribute<ForeignKeyTo>() is not null).ToList();
         if (!foreignKeyProperties.Any())
         {
             throw new Exception("Foreign key attribute is not found.");

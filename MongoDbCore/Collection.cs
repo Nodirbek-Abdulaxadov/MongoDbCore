@@ -1,7 +1,4 @@
-﻿using MongoDB.Bson.Serialization;
-using MongoDB.Bson.Serialization.Serializers;
-using Newtonsoft.Json.Linq;
-using System.Collections;
+﻿using System.Collections;
 using System.Reflection;
 
 namespace MongoDbCore;
@@ -163,7 +160,7 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
         var property = CollectionExtensions.ExtractProperty(includeExpression);
 
         var propertyProperties = typeof(TProperty).GetProperties();
-        var foreignKeyProperties = propertyProperties.Where(x => x.GetCustomAttribute<ForeignKey>() is not null).ToList();
+        var foreignKeyProperties = propertyProperties.Where(x => x.GetCustomAttribute<ForeignKeyTo>() is not null).ToList();
         if (!foreignKeyProperties.Any())
         {
             throw new Exception("Foreign key attribute is not found.");
@@ -213,12 +210,51 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
         return this;
     }
 
+    public Collection<T> IncludeRef<TProperty>(Expression<Func<T, TProperty>> includeExpression) where TProperty : BaseEntity
+    {
+        var property = CollectionExtensions.ExtractProperty(includeExpression);
+
+        var refAttribute = property.GetCustomAttribute<ReferenceTo>();
+        if (refAttribute is null)
+        { 
+            throw new Exception("Reference To attribute is not found.");
+        }
+
+        if (string.IsNullOrEmpty(refAttribute.Entity))
+        {
+            throw new Exception("Entity name is not found.");
+        }
+
+        for (int i = 0; i < Count(); i++)
+        {
+            var item = this[i];
+            var obj = property.GetValue(item);
+            if (obj is not null)
+            {
+                var value = (TProperty)obj;
+                var filter = Builders<TProperty>.Filter.Eq("Id", (value).Id);
+
+                var collectionName = property.PropertyType.Name.Pluralize().Underscore();
+                var collection = dbContext.GetCollection<TProperty>(collectionName);
+
+                var foreignPropertyValue = IAsyncCursorSourceExtensions.FirstOrDefault(collection.Find(filter));
+
+                if (foreignPropertyValue != null)
+                {
+                    includeValues.Add(property, foreignPropertyValue);
+                }
+            }
+        }
+
+        return this;
+    }
+
     public Collection<T> Include<TProperty>(Expression<Func<T, IEnumerable<TProperty>>> includeExpression) where TProperty : BaseEntity
     {
         var property = CollectionExtensions.ExtractProperty(includeExpression);
 
         var propertyProperties = typeof(TProperty).GetProperties();
-        var foreignKeyProperties = propertyProperties.Where(x => x.GetCustomAttribute<ForeignKey>() is not null).ToList();
+        var foreignKeyProperties = propertyProperties.Where(x => x.GetCustomAttribute<ForeignKeyTo>() is not null).ToList();
         if (!foreignKeyProperties.Any())
         {
             throw new Exception("Foreign key attribute is not found.");
