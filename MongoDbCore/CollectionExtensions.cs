@@ -1,4 +1,5 @@
 ﻿using MongoDB.Driver.Core.Misc;
+using MongoDbCore.Helpers;
 using System.Reflection;
 
 namespace MongoDbCore;
@@ -173,18 +174,21 @@ public static class CollectionExtensions
     }
 
 
-    public static List<T> ToList<T>(this IFindFluent<T, T> findFluent, Dictionary<PropertyInfo, dynamic>? dict = default)
-        => ToListFromIAsyncCursorSource(findFluent, dict);
+    public static List<T> ToList<T>(this IFindFluent<T, T> findFluent, List<IncludeReference>? _includeReferences = default)
+        where T : BaseEntity
+    => ToListFromIAsyncCursorSource(findFluent, _includeReferences);
 
-    public static List<TDocument> ToListFromIAsyncCursorSource<TDocument>(this IAsyncCursorSource<TDocument> source, Dictionary<PropertyInfo, dynamic>? dict = default, CancellationToken cancellationToken = default)
+    public static List<TDocument> ToListFromIAsyncCursorSource<TDocument>(this IAsyncCursorSource<TDocument> source, List<IncludeReference>? _includeReferences = default, CancellationToken cancellationToken = default)
+        where TDocument : BaseEntity
     {
         using (var cursor = source.ToCursor(cancellationToken))
         {
-            return cursor.ToListFromIAsyncCursor(dict, cancellationToken);
+            return cursor.ToListFromIAsyncCursor(_includeReferences, cancellationToken);
         }
     }
     
-    public static List<TDocument> ToListFromIAsyncCursor<TDocument>(this IAsyncCursor<TDocument> source, Dictionary<PropertyInfo, dynamic>? dict = default, CancellationToken cancellationToken = default)
+    public static List<TDocument> ToListFromIAsyncCursor<TDocument>(this IAsyncCursor<TDocument> source, List<IncludeReference>? _includeReferences = default, CancellationToken cancellationToken = default)
+        where TDocument : BaseEntity
     {
         Ensure.IsNotNull(source, nameof(source));
         var list = new List<TDocument>();
@@ -195,14 +199,13 @@ public static class CollectionExtensions
             {
                 foreach (var item in source.Current)
                 {
-                    if (dict is not null && dict.Any())
+                    if (_includeReferences is not null && _includeReferences.Any())
                     {
-                        foreach (var key in dict.Keys)
+                        foreach (var reference in _includeReferences.Where(x => x.Id == item.Id))
                         {
-                            var value = dict[key];
-                            if (value != null)
+                            if (reference != null)
                             {
-                                key.SetValue(item, value);
+                                reference.Property.SetValue(item, reference.Value);
                             }
                         }
                     }

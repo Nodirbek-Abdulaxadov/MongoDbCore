@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using MongoDB.Driver;
+using System.Collections;
 using System.Reflection;
 
 namespace MongoDbCore;
@@ -11,6 +12,7 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
     private readonly bool _isCacheable;
     private readonly MongoDbContext dbContext;
     private IFindFluent<T, T>? _cache;
+    private List<IncludeReference> _includeReferences = [];
 
     public Collection(MongoDbContext dbContext)
     {
@@ -22,8 +24,6 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
     #endregion
 
     #region Queries
-
-    private Dictionary<PropertyInfo, dynamic> includeValues = [];
 
     public T this[int index]
     {
@@ -49,7 +49,7 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
         }
     }
 
-    public List<T> ToList() => Get().ToList(includeValues);
+    public List<T> ToList() => Get().ToList(_includeReferences);
 
     public Task<List<T>> ToListAsync(CancellationToken cancellationToken = default)
         => Get().ToListAsync(cancellationToken);
@@ -203,7 +203,12 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
 
             if (foreignPropertyValue != null)
             {
-                includeValues.Add(property, foreignPropertyValue);
+                _includeReferences.Add(new IncludeReference()
+                {
+                    Id = item.Id,
+                    Property = property,
+                    Value = foreignPropertyValue
+                });
             }
         }
 
@@ -241,7 +246,12 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
 
                 if (foreignPropertyValue != null)
                 {
-                    includeValues.Add(property, foreignPropertyValue);
+                    _includeReferences.Add(new IncludeReference()
+                    {
+                        Id = item.Id,
+                        Property = property,
+                        Value = foreignPropertyValue
+                    });
                 }
             }
         }
@@ -297,7 +307,12 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
 
             if (foreignPropertyValue != null)
             {
-                includeValues.TryAdd(property, foreignPropertyValue);
+                _includeReferences.Add(new IncludeReference()
+                {
+                    Id = item.Id,
+                    Property = property,
+                    Value = foreignPropertyValue
+                });
             }
         }
 
