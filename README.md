@@ -1,5 +1,5 @@
 # MongoDbCore
 
-## Alpha version 1.0.4
+## Alpha version 1.0.6
 
 [`https://www.nuget.org/packages/MongoDbCore/`](https://www.nuget.org/packages/MongoDbCore/)
