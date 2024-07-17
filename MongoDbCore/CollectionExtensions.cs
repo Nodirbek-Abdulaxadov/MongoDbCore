@@ -22,134 +22,6 @@ public static class CollectionExtensions
         return findFluent.Limit(count).ToList();
     }
 
-    public static List<T> Include<T, TProperty>(this IFindFluent<T, T> source, Expression<Func<T, TProperty>> includeExpression)
-        where T : BaseEntity
-        where TProperty : BaseEntity
-        => source.ToList().Include(includeExpression);
-
-    public static List<T> Include<T, TProperty>(this List<T> source, Expression<Func<T, TProperty>> includeExpression)
-        where T : BaseEntity
-        where TProperty : BaseEntity
-    {
-        var dbContext = StaticServiceLocator.GetService<MongoDbContext>();
-        var property = ExtractProperty(includeExpression);
-
-        var propertyProperties = typeof(TProperty).GetProperties();
-        var foreignKeyProperties = propertyProperties.Where(x => x.GetCustomAttribute<ForeignKeyTo>() is not null).ToList();
-        if (!foreignKeyProperties.Any())
-        {
-            throw new Exception("Foreign key attribute is not found.");
-        }
-
-        PropertyInfo? foreignKeyProperty = default;
-
-        foreach (var fkProperty in foreignKeyProperties)
-        {
-            var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => (string)x.NamedArguments[0].TypedValue.Value! == typeof(T).Name);
-            if (attribute is null)
-            {
-                throw new Exception("Foreign key attribute is not found.2");
-            }
-
-            foreignKeyProperty = fkProperty;
-            break;
-        }
-
-        if (foreignKeyProperty == null)
-        {
-            throw new Exception("Foreign key property is not found.3");
-        }
-
-        var foreignKeyPropertyName = foreignKeyProperty.Name;
-
-        for (int i = 0; i < source.Count; i++)
-        {
-            var filter = Builders<TProperty>.Filter.Eq(foreignKeyPropertyName, source[i].Id);
-
-            var collectionName = property.PropertyType.Name.Pluralize().Underscore();
-            var collection = dbContext.GetCollection<TProperty>(collectionName);
-
-            // Create a projection to include the necessary fields
-            var projection = Builders<TProperty>.Projection.Include(foreignKeyPropertyName);
-
-            var foreignPropertyValue = collection.Find(filter).Project<TProperty>(projection).FirstOrDefault();
-
-            if (foreignPropertyValue != null)
-            {
-                lock (property)
-                {
-                    property.SetValue(source[i], foreignPropertyValue);
-                }
-            }
-        }
-
-        return source;
-    }
-
-    public static List<T> Include<T, TProperty>(this IFindFluent<T, T> source, Expression<Func<T, IEnumerable<TProperty>>> includeExpression)
-        where T : BaseEntity
-        where TProperty : BaseEntity
-        => source.ToList().Include(includeExpression);
-
-    public static List<T> Include<T, TProperty>(this List<T> source, Expression<Func<T, IEnumerable<TProperty>>> includeExpression)
-        where T : BaseEntity
-        where TProperty : BaseEntity
-    {
-        var dbContext = StaticServiceLocator.GetService<MongoDbContext>();
-        var property = ExtractProperty(includeExpression);
-
-        var propertyProperties = typeof(TProperty).GetProperties();
-        var foreignKeyProperties = propertyProperties.Where(x => x.GetCustomAttribute<ForeignKeyTo>() is not null).ToList();
-        if (!foreignKeyProperties.Any())
-        {
-            throw new Exception("Foreign key attribute is not found.");
-        }
-
-        PropertyInfo? foreignKeyProperty = default;
-
-        foreach (var fkProperty in foreignKeyProperties)
-        {
-            var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => (string)x.NamedArguments[0].TypedValue.Value! == typeof(T).Name);
-            if (attribute is null)
-            {
-                throw new Exception("Foreign key attribute is not found.2");
-            }
-
-            foreignKeyProperty = fkProperty;
-            break;
-        }
-
-        if (foreignKeyProperty == null)
-        {
-            throw new Exception("Foreign key property is not found.3");
-        }
-
-        var foreignKeyPropertyName = foreignKeyProperty.Name;
-
-        for (int i = 0; i < source.Count; i++)
-        {
-            var filter = Builders<TProperty>.Filter.Eq(foreignKeyPropertyName, source[i].Id);
-
-            var collectionName = property.PropertyType.Name.Pluralize().Underscore();
-            var collection = dbContext.GetCollection<TProperty>(collectionName);
-
-            // Create a projection to include the necessary fields
-            var projection = Builders<TProperty>.Projection.Include(foreignKeyPropertyName);
-
-            var foreignPropertyValue = collection.Find(filter).Project<TProperty>(projection).ToList();
-
-            if (foreignPropertyValue != null)
-            {
-                lock (property)
-                {
-                    property.SetValue(source[i], foreignPropertyValue);
-                }
-            }
-        }
-
-        return source;
-    }
-
     public static PropertyInfo ExtractProperty<T, TProperty>(Expression<Func<T, TProperty>> propertyExpression)
     {
         Expression body = propertyExpression.Body;
@@ -174,6 +46,8 @@ public static class CollectionExtensions
     }
 
 
+    #region ToList
+
     public static List<T> ToList<T>(this IFindFluent<T, T> findFluent, List<IncludeReference>? _includeReferences = default)
         where T : BaseEntity
     => ToListFromIAsyncCursorSource(findFluent, _includeReferences);
@@ -186,11 +60,12 @@ public static class CollectionExtensions
             return cursor.ToListFromIAsyncCursor(_includeReferences, cancellationToken);
         }
     }
-    
-    public static List<TDocument> ToListFromIAsyncCursor<TDocument>(this IAsyncCursor<TDocument> source, List<IncludeReference>? _includeReferences = default, CancellationToken cancellationToken = default)
-        where TDocument : BaseEntity
+
+    public static List<TDocument> ToListFromIAsyncCursor<TDocument>(this IAsyncCursor<TDocument> source, List<IncludeReference>? includeReferences = null, CancellationToken cancellationToken = default)
+    where TDocument : BaseEntity
     {
         Ensure.IsNotNull(source, nameof(source));
+
         var list = new List<TDocument>();
 
         using (source)
@@ -199,21 +74,100 @@ public static class CollectionExtensions
             {
                 foreach (var item in source.Current)
                 {
-                    if (_includeReferences is not null && _includeReferences.Any())
-                    {
-                        foreach (var reference in _includeReferences.Where(x => x.Id == item.Id))
-                        {
-                            if (reference != null)
-                            {
-                                reference.Property.SetValue(item, reference.Value);
-                            }
-                        }
-                    }
-                    list.Add(item);
+                    list.Add(SetReferences(item, includeReferences));
                 }
-                cancellationToken.ThrowIfCancellationRequested();
             }
         }
+
         return list;
+    }
+
+    #endregion
+
+    #region FirstOrDefault
+    public static TProjection FirstOrDefault<TDocument, TProjection>(this IFindFluent<TDocument, TProjection> find, List<IncludeReference>? _includeReferences = default, CancellationToken cancellationToken = default(CancellationToken))
+        where TProjection : BaseEntity
+    {
+        Ensure.IsNotNull(find, nameof(find));
+
+        return find.Limit(1).FirstOrDefault2(_includeReferences, cancellationToken);
+    }
+
+    public static TDocument FirstOrDefault2<TDocument>(this IAsyncCursorSource<TDocument> source, List<IncludeReference>? _includeReferences = default, CancellationToken cancellationToken = default)
+        where TDocument : BaseEntity
+    {
+        TDocument? document;
+
+        if (source is IQueryable<TDocument> queryable && !cancellationToken.CanBeCanceled)
+        {
+            document = Queryable.FirstOrDefault(queryable)!;
+        }
+
+        using (var cursor = source.ToCursor(cancellationToken))
+        {
+            document = cursor.FirstOrDefault(cancellationToken);
+        }
+
+        document = SetReferences(document, _includeReferences);
+
+        return document;
+    }
+
+    public static TDocument FirstOrDefault<TDocument>(this IAsyncCursor<TDocument> cursor, CancellationToken cancellationToken = default)
+    {
+        using (cursor)
+        {
+            var batch = GetFirstBatch(cursor, cancellationToken);
+            return batch.FirstOrDefault()!;
+        }
+    }
+
+    private static IEnumerable<TDocument> GetFirstBatch<TDocument>(IAsyncCursor<TDocument> cursor, CancellationToken cancellationToken)
+    {
+        if (cursor.MoveNext(cancellationToken))
+        {
+            return cursor.Current;
+        }
+        else
+        {
+            return Enumerable.Empty<TDocument>();
+        }
+    }
+
+
+
+    #endregion
+
+    private static TDocument? SetReferences<TDocument>(this TDocument item, List<IncludeReference>? includeReferences)
+        where TDocument : BaseEntity
+    {
+        if (item is null) return item;
+
+        // Handle primary includes
+        if (includeReferences is not null && includeReferences.Any())
+        {
+            foreach (var reference in includeReferences.Where(x => x.Id.Equals(item.Id)))
+            {
+                if (reference != null)
+                {
+                    reference.Property.SetValue(item, reference.Value);
+
+                    // Handle nested includes (ThenIncludes)
+                    var nestedIncludeReferences = includeReferences
+                        .Where(x => x.Id.Equals(reference.Value?.GetType().GetProperty("Id")?.GetValue(reference.Value)))
+                        .ToList();
+
+                    if (nestedIncludeReferences.Any())
+                    {
+                        foreach (var nestedReference in nestedIncludeReferences)
+                        {
+                            nestedReference.Property.SetValue(reference.Value, nestedReference.Value);
+                        }
+                    }
+                }
+            }
+        }
+
+        return item;
     }
 }

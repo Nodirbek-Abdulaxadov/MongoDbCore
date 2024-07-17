@@ -1,5 +1,4 @@
-﻿using MongoDB.Bson;
-using MongoDB.Driver;
+﻿using MongoDB.Driver;
 
 namespace WebApplication1.Controllers;
 
@@ -17,7 +16,9 @@ public class TestController(AppDbContext dbContext) : ControllerBase
     [HttpGet("dsss")]
     public IActionResult Gets()
     {
-        var classa = dbContext.ClassAs.IncludeRef(x => x.ClassC).ToList();
+        var step1 = dbContext.ClassAs.Include(x => x.ClassB);
+        var step2 = step1.ThenInclude<ClassB, ClassC>(x => x.ClassC);
+        var classa = step2.ToList();
         return Ok(classa);
     }
 

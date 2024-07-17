@@ -41,7 +41,8 @@ public class AppDbContext : MongoDbContext
         {
             var mockData = Enumerable.Range(1, 5).Select(index => new ClassB
             {
-                Number = Random.Shared.Next(1, 100)
+                Number = Random.Shared.Next(1, 100),
+                ClassAId = ClassAs[Random.Shared.Next(1, 5)].Id
             })
             .ToArray();
 
@@ -52,7 +53,8 @@ public class AppDbContext : MongoDbContext
         {
             var mockData = Enumerable.Range(1, 5).Select(index => new ClassC
             {
-                Number = Random.Shared.Next(1, 100)
+                Number = Random.Shared.Next(1, 100),
+                ClassBId = ClassBs[Random.Shared.Next(1, 5)].Id
             })
             .ToArray();
 

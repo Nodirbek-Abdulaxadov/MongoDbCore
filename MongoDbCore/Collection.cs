@@ -1,5 +1,4 @@
-﻿using MongoDB.Driver;
-using System.Collections;
+﻿using System.Collections;
 using System.Reflection;
 
 namespace MongoDbCore;
@@ -22,6 +21,8 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
     }
 
     #endregion
+
+    Type tt;
 
     #region Queries
 
@@ -55,10 +56,10 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
         => Get().ToListAsync(cancellationToken);
 
     public T FirstOrDefault()
-        => Get().FirstOrDefault();
+        => Get().FirstOrDefault(_includeReferences);
 
     public T FirstOrDefault(Expression<Func<T, bool>> predicate)
-        => Get(predicate).FirstOrDefault();
+        => Get(predicate).FirstOrDefault(_includeReferences);
 
     public Task<T> FirstOrDefaultAsync(CancellationToken cancellationToken = default)
         => Get().FirstOrDefaultAsync(cancellationToken);
@@ -155,9 +156,11 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
 
     #region Extensions
 
-    public Collection<T> Include<TProperty>(Expression<Func<T, TProperty>> includeExpression) where TProperty : BaseEntity
+    public Collection<T> Include<TProperty>(Expression<Func<T, TProperty>> includeExpression) 
+        where TProperty : BaseEntity
     {
         var property = CollectionExtensions.ExtractProperty(includeExpression);
+        tt = property.GetType();
 
         var propertyProperties = typeof(TProperty).GetProperties();
         var foreignKeyProperties = propertyProperties.Where(x => x.GetCustomAttribute<ForeignKeyTo>() is not null).ToList();
@@ -196,10 +199,7 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
             var collectionName = property.PropertyType.Name.Pluralize().Underscore();
             var collection = dbContext.GetCollection<TProperty>(collectionName);
 
-            // Create a projection to include the necessary fields
-            var projection = Builders<TProperty>.Projection.Include(foreignKeyPropertyName);
-
-            var foreignPropertyValue = IAsyncCursorSourceExtensions.FirstOrDefault(collection.Find(filter).Project<TProperty>(projection));
+            var foreignPropertyValue = IAsyncCursorSourceExtensions.FirstOrDefault(collection.Find(filter));
 
             if (foreignPropertyValue != null)
             {
@@ -209,50 +209,6 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
                     Property = property,
                     Value = foreignPropertyValue
                 });
-            }
-        }
-
-        return this;
-    }
-
-    public Collection<T> IncludeRef<TProperty>(Expression<Func<T, TProperty>> includeExpression) where TProperty : BaseEntity
-    {
-        var property = CollectionExtensions.ExtractProperty(includeExpression);
-
-        var refAttribute = property.GetCustomAttribute<ReferenceTo>();
-        if (refAttribute is null)
-        { 
-            throw new Exception("Reference To attribute is not found.");
-        }
-
-        if (string.IsNullOrEmpty(refAttribute.Entity))
-        {
-            throw new Exception("Entity name is not found.");
-        }
-
-        for (int i = 0; i < Count(); i++)
-        {
-            var item = this[i];
-            var obj = property.GetValue(item);
-            if (obj is not null)
-            {
-                var value = (TProperty)obj;
-                var filter = Builders<TProperty>.Filter.Eq("Id", (value).Id);
-
-                var collectionName = property.PropertyType.Name.Pluralize().Underscore();
-                var collection = dbContext.GetCollection<TProperty>(collectionName);
-
-                var foreignPropertyValue = IAsyncCursorSourceExtensions.FirstOrDefault(collection.Find(filter));
-
-                if (foreignPropertyValue != null)
-                {
-                    _includeReferences.Add(new IncludeReference()
-                    {
-                        Id = item.Id,
-                        Property = property,
-                        Value = foreignPropertyValue
-                    });
-                }
             }
         }
 
@@ -300,10 +256,7 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
             var collectionName = typeof(TProperty).Name.Pluralize().Underscore();
             var collection = dbContext.GetCollection<TProperty>(collectionName);
 
-            // Create a projection to include the necessary fields
-            var projection = Builders<TProperty>.Projection.Include(foreignKeyPropertyName);
-
-            var foreignPropertyValue = IAsyncCursorSourceExtensions.ToList(collection.Find(filter).Project<TProperty>(projection));
+            var foreignPropertyValue = IAsyncCursorSourceExtensions.ToList(collection.Find(filter));
 
             if (foreignPropertyValue != null)
             {
@@ -313,6 +266,122 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
                     Property = property,
                     Value = foreignPropertyValue
                 });
+            }
+        }
+
+        return this;
+    }
+
+
+    public Collection<T> ThenInclude<TPreviousProperty, TProperty>(Expression<Func<TPreviousProperty, TProperty>> includeExpression)
+    where TPreviousProperty : BaseEntity
+    where TProperty : BaseEntity
+    {
+        var property = CollectionExtensions.ExtractProperty(includeExpression);
+
+        var propertyProperties = typeof(TProperty).GetProperties();
+        var foreignKeyProperties = propertyProperties.Where(x => x.GetCustomAttribute<ForeignKeyTo>() is not null).ToList();
+        if (!foreignKeyProperties.Any())
+        {
+            throw new Exception("Foreign key attribute is not found.");
+        }
+
+        PropertyInfo? foreignKeyProperty = default;
+
+        foreach (var fkProperty in foreignKeyProperties)
+        {
+            var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => (string)x.NamedArguments[0].TypedValue.Value! == typeof(TPreviousProperty).Name);
+            if (attribute is null)
+            {
+                throw new Exception("Foreign key attribute is not found.2");
+            }
+
+            foreignKeyProperty = fkProperty;
+            break;
+        }
+
+        if (foreignKeyProperty == null)
+        {
+            throw new Exception("Foreign key property is not found.3");
+        }
+
+        var foreignKeyPropertyName = foreignKeyProperty.Name;
+
+        var prevPropertyCollection = new Collection<TPreviousProperty>(dbContext);
+
+        for (int i = 0; i < prevPropertyCollection.Count(); i++)
+        {
+            var item = prevPropertyCollection[i];
+            var previousPropertyValue = item.GetType().GetProperty(nameof(TProperty))?.GetValue(item);
+
+            if (previousPropertyValue == null)
+            {
+                continue;
+            }
+
+            var filter = Builders<TProperty>.Filter.Eq(foreignKeyPropertyName, previousPropertyValue.GetType().GetProperty("Id")?.GetValue(previousPropertyValue));
+
+            var collectionName = property.PropertyType.Name.Pluralize().Underscore();
+            var collection = dbContext.GetCollection<TProperty>(collectionName);
+
+            // Create a projection to include the necessary fields
+            var projection = Builders<TProperty>.Projection.Include(foreignKeyPropertyName);
+
+            var foreignPropertyValue = IAsyncCursorSourceExtensions.FirstOrDefault(collection.Find(filter).Project<TProperty>(projection));
+
+            if (foreignPropertyValue != null)
+            {
+                _includeReferences.Add(new IncludeReference()
+                {
+                    Id = (string)previousPropertyValue.GetType().GetProperty("Id")?.GetValue(previousPropertyValue)!,
+                    Property = property,
+                    Value = foreignPropertyValue
+                });
+            }
+        }
+
+        return this;
+    }
+
+
+    public Collection<T> IncludeRef<TProperty>(Expression<Func<T, TProperty>> includeExpression) where TProperty : BaseEntity
+    {
+        var property = CollectionExtensions.ExtractProperty(includeExpression);
+
+        var refAttribute = property.GetCustomAttribute<ReferenceTo>();
+        if (refAttribute is null)
+        { 
+            throw new Exception("Reference To attribute is not found.");
+        }
+
+        if (string.IsNullOrEmpty(refAttribute.Entity))
+        {
+            throw new Exception("Entity name is not found.");
+        }
+
+        for (int i = 0; i < Count(); i++)
+        {
+            var item = this[i];
+            var obj = property.GetValue(item);
+            if (obj is not null)
+            {
+                var value = (TProperty)obj;
+                var filter = Builders<TProperty>.Filter.Eq("Id", (value).Id);
+
+                var collectionName = property.PropertyType.Name.Pluralize().Underscore();
+                var collection = dbContext.GetCollection<TProperty>(collectionName);
+
+                var foreignPropertyValue = IAsyncCursorSourceExtensions.FirstOrDefault(collection.Find(filter));
+
+                if (foreignPropertyValue != null)
+                {
+                    _includeReferences.Add(new IncludeReference()
+                    {
+                        Id = item.Id,
+                        Property = property,
+                        Value = foreignPropertyValue
+                    });
+                }
             }
         }
 
@@ -357,9 +426,9 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
         if (!_isCacheable || _cache == null)
         {
             _cache = _collection.Find(filter ?? FilterDefinition<T>.Empty);
+            return _cache;
         }
 
-        var list = _cache.ToList();
         return _cache;
     }
 
