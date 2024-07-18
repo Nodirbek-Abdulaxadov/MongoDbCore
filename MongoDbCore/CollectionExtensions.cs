@@ -1,8 +1,4 @@
-﻿using MongoDB.Driver.Core.Misc;
-using MongoDbCore.Helpers;
-using System.Reflection;
-
-namespace MongoDbCore;
+﻿namespace MongoDbCore;
 
 public static class CollectionExtensions
 {
@@ -48,21 +44,30 @@ public static class CollectionExtensions
 
     #region ToList
 
-    public static List<T> ToList<T>(this IFindFluent<T, T> findFluent, List<IncludeReference>? _includeReferences = default)
+    public static List<T> ToList<T, TDbContext>(this IFindFluent<T, T> findFluent, List<IncludeReference>? _includeReferences = default, TDbContext? dbContext = default)
         where T : BaseEntity
-    => ToListFromIAsyncCursorSource(findFluent, _includeReferences);
+        where TDbContext : MongoDbContext
+    => ToListFromIAsyncCursorSource(findFluent, _includeReferences, dbContext);
 
-    public static List<TDocument> ToListFromIAsyncCursorSource<TDocument>(this IAsyncCursorSource<TDocument> source, List<IncludeReference>? _includeReferences = default, CancellationToken cancellationToken = default)
+    public static List<TDocument> ToListFromIAsyncCursorSource<TDocument, TDbContext>(this IAsyncCursorSource<TDocument> source, 
+                                                                          List<IncludeReference>? _includeReferences = default, 
+                                                                          TDbContext? dbContext = default, 
+                                                                          CancellationToken cancellationToken = default)
         where TDocument : BaseEntity
+        where TDbContext : MongoDbContext
     {
         using (var cursor = source.ToCursor(cancellationToken))
         {
-            return cursor.ToListFromIAsyncCursor(_includeReferences, cancellationToken);
+            return cursor.ToListFromIAsyncCursor(_includeReferences, dbContext, cancellationToken);
         }
     }
 
-    public static List<TDocument> ToListFromIAsyncCursor<TDocument>(this IAsyncCursor<TDocument> source, List<IncludeReference>? includeReferences = null, CancellationToken cancellationToken = default)
-    where TDocument : BaseEntity
+    public static List<TDocument> ToListFromIAsyncCursor<TDocument, TDbContext>(this IAsyncCursor<TDocument> source, 
+                                                                    List<IncludeReference>? includeReferences = null,
+                                                                    TDbContext? dbContext = default,
+                                                                    CancellationToken cancellationToken = default)
+        where TDocument : BaseEntity
+        where TDbContext: MongoDbContext
     {
         Ensure.IsNotNull(source, nameof(source));
 
@@ -74,7 +79,7 @@ public static class CollectionExtensions
             {
                 foreach (var item in source.Current)
                 {
-                    list.Add(SetReferences(item, includeReferences));
+                    list.Add(SetReferences(item, includeReferences, dbContext)!);
                 }
             }
         }
@@ -85,15 +90,23 @@ public static class CollectionExtensions
     #endregion
 
     #region FirstOrDefault
-    public static TProjection FirstOrDefault<TDocument, TProjection>(this IFindFluent<TDocument, TProjection> find, List<IncludeReference>? _includeReferences = default, CancellationToken cancellationToken = default(CancellationToken))
+    public static TProjection? FirstOrDefault<TDocument, TProjection, TDbContext>(this IFindFluent<TDocument, TProjection> find, 
+                                                                     List<IncludeReference>? _includeReferences = default, 
+                                                                     TDbContext? dbContext = default, 
+                                                                     CancellationToken cancellationToken = default(CancellationToken))
         where TProjection : BaseEntity
+        where TDbContext : MongoDbContext
     {
         Ensure.IsNotNull(find, nameof(find));
 
-        return find.Limit(1).FirstOrDefault2(_includeReferences, cancellationToken);
+        return find.Limit(1).FirstOrDefault2(_includeReferences, dbContext, cancellationToken);
     }
 
-    public static TDocument FirstOrDefault2<TDocument>(this IAsyncCursorSource<TDocument> source, List<IncludeReference>? _includeReferences = default, CancellationToken cancellationToken = default)
+    public static TDocument? FirstOrDefault2<TDocument, TDbContext>(this IAsyncCursorSource<TDocument> source, 
+                                                       List<IncludeReference>? _includeReferences = default, 
+                                                       TDbContext? dbContext = default, 
+                                                       CancellationToken cancellationToken = default)
+        where TDbContext : MongoDbContext
         where TDocument : BaseEntity
     {
         TDocument? document;
@@ -108,7 +121,7 @@ public static class CollectionExtensions
             document = cursor.FirstOrDefault(cancellationToken);
         }
 
-        document = SetReferences(document, _includeReferences);
+        document = SetReferences(document, _includeReferences, dbContext);
 
         return document;
     }
@@ -138,34 +151,74 @@ public static class CollectionExtensions
 
     #endregion
 
-    private static TDocument? SetReferences<TDocument>(this TDocument item, List<IncludeReference>? includeReferences)
+    private static TDocument? SetReferences<TDocument, TDbContext>(this TDocument item, List<IncludeReference>? includeReferences, TDbContext? dbContext)
         where TDocument : BaseEntity
+        where TDbContext : MongoDbContext
     {
-        if (item is null) return item;
+        if (item is null || includeReferences is null) return item;
 
-        // Handle primary includes
-        if (includeReferences is not null && includeReferences.Any())
+        foreach(var reference in includeReferences.Where(x => x.Order == 1))
         {
-            foreach (var reference in includeReferences.Where(x => x.Id.Equals(item.Id)))
+            var source = reference.Source;
+            var destination = reference.Destination;
+
+            if (source is null || destination is null) continue;
+
+            var sourceProperty = source.PropertyInfo;
+            var destinationProperty = destination.PropertyInfo;
+
+            if (sourceProperty is null || destinationProperty is null) continue;
+
+            var collectionName = source.CollectionName;
+
+            if (collectionName is null) continue;
+
+            var collection = dbContext?.GetCollection<BsonDocument>(collectionName);
+
+            if (collection is null) continue;
+
+            var filter = Builders<BsonDocument>.Filter.Eq(sourceProperty.Name, item.Id);
+
+            var destinationValue = collection.Find(filter).FirstOrDefault();
+
+            if (destinationValue is null) continue;
+
+            // Deserialize the dynamic object to the expected type
+            dynamic deserializedValue = BsonSerializer.Deserialize(destinationValue, destinationProperty.PropertyType);
+
+            foreach (var includeReference in includeReferences.Where(x => x.Order == 2))
             {
-                if (reference != null)
-                {
-                    reference.Property.SetValue(item, reference.Value);
+                var source2 = includeReference.Source;
+                var destination2 = includeReference.Destination;
 
-                    // Handle nested includes (ThenIncludes)
-                    var nestedIncludeReferences = includeReferences
-                        .Where(x => x.Id.Equals(reference.Value?.GetType().GetProperty("Id")?.GetValue(reference.Value)))
-                        .ToList();
+                if (source2 is null || destination2 is null) continue;
 
-                    if (nestedIncludeReferences.Any())
-                    {
-                        foreach (var nestedReference in nestedIncludeReferences)
-                        {
-                            nestedReference.Property.SetValue(reference.Value, nestedReference.Value);
-                        }
-                    }
-                }
+                var sourceProperty2 = source2.PropertyInfo;
+                var destinationProperty2 = destination2.PropertyInfo;
+
+                if (sourceProperty2 is null || destinationProperty2 is null) continue;
+
+                var collectionName2 = source2.CollectionName;
+
+                if (collectionName2 is null) continue;
+
+                var collection2 = dbContext?.GetCollection<BsonDocument>(collectionName2);
+
+                if (collection2 is null) continue;
+
+                var filter2 = Builders<BsonDocument>.Filter.Eq(sourceProperty2.Name, (string)deserializedValue.Id);
+
+                var destinationValue2 = collection2.Find(filter2).FirstOrDefault();
+
+                if (destinationValue2 is null) continue;
+
+                // Deserialize the dynamic object to the expected type
+                var deserializedValue2 = BsonSerializer.Deserialize(destinationValue2, destinationProperty2.PropertyType);
+
+                destinationProperty2.SetValue(deserializedValue, deserializedValue2);
             }
+
+            destinationProperty.SetValue(item, deserializedValue);
         }
 
         return item;

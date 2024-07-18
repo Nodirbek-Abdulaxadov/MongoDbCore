@@ -9,3 +9,8 @@ global using System.Text.RegularExpressions;
 global using MongoDbCore.Attributes;
 global using MongoDbCore.Helpers;
 global using MongoDbCore;
+global using MongoDbCore.Releationships;
+global using MongoDB.Bson.Serialization;
+global using MongoDB.Driver.Core.Misc;
+global using System.Reflection;
+global using System.Collections;

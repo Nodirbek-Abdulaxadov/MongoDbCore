@@ -1,10 +1,14 @@
-﻿using System.Reflection;
-
-namespace MongoDbCore.Helpers;
+﻿namespace MongoDbCore.Helpers;
 
 public class IncludeReference
 {
-    public string Id { get; set; } = string.Empty;
-    public PropertyInfo Property { get; set; } = null!;
-    public dynamic Value { get; set; } = null!;
+    public byte Order { get; set; }
+    public Source? Source { get; set; }
+    public Source? Destination { get; set; }
+}
+
+public class Source
+{
+    public PropertyInfo? PropertyInfo { get; set; }
+    public string? CollectionName { get; set; }
 }

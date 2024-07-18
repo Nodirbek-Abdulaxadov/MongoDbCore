@@ -17,9 +17,12 @@ public class TestController(AppDbContext dbContext) : ControllerBase
     public IActionResult Gets()
     {
         var step1 = dbContext.ClassAs.Include(x => x.ClassB);
-        var step2 = step1.ThenInclude<ClassB, ClassC>(x => x.ClassC);
-        var classa = step2.ToList();
-        return Ok(classa);
+
+        var step3 = step1.ThenInclude(x => x.ClassC);
+
+        var res = step3.FirstOrDefault(x => x.Number > 80);
+
+        return Ok(res);
     }
 
 }
