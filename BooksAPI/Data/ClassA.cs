@@ -8,5 +8,5 @@ public class ClassA : BaseEntity
     [BsonIgnore]
     public ClassB? ClassB { get; set; }
     [BsonIgnore]
-    public List<ClassB> ClassBList { get; set; } = new();
+    public List<ClassB> ClassBList { get; set; } = [];
 }

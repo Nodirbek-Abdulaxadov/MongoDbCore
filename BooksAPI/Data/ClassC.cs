@@ -1,4 +1,6 @@
-﻿namespace WebApplication1.Data;
+﻿using MongoDB.Bson.Serialization.Attributes;
+
+namespace WebApplication1.Data;
 
 public class ClassC : BaseEntity
 {
@@ -6,4 +8,6 @@ public class ClassC : BaseEntity
     public string Address { get; set; } = string.Empty;
     [ForeignKeyTo(Entity = "ClassB")]
     public string ClassBId { get; set; } = string.Empty;
+    [BsonIgnore]
+    public List<ClassD> ClassDList { get; set; } = [];
 }

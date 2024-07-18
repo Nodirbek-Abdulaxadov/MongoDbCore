@@ -162,7 +162,7 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
 
     #region Extensions
     public IIncludableQueryable<T, TProperty> Include<TProperty>(Expression<Func<T, TProperty>> includeExpression)
-    where TProperty : BaseEntity
+        where TProperty : BaseEntity
     {
         var property = CollectionExtensions.ExtractProperty(includeExpression);
 
@@ -210,6 +210,56 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
                 }
             });
 
+        return new IncludableQueryable<T, TProperty>(this, _includeReferences);
+    }
+    public IIncludableQueryable<T, TProperty> Include<TProperty>(Expression<Func<T, IEnumerable<TProperty>>> includeExpression)
+        where TProperty : BaseEntity
+    {
+        var property = CollectionExtensions.ExtractProperty(includeExpression);
+
+        var propertyProperties = typeof(TProperty).GetProperties();
+        var foreignKeyProperties = propertyProperties.Where(x => x.GetCustomAttribute<ForeignKeyTo>() is not null).ToList();
+        if (!foreignKeyProperties.Any())
+        {
+            throw new Exception("Foreign key attribute is not found.");
+        }
+
+        PropertyInfo? foreignKeyProperty = default;
+
+        foreach (var fkProperty in foreignKeyProperties)
+        {
+            var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => (string)x.NamedArguments[0].TypedValue.Value! == typeof(T).Name);
+            if (attribute is null)
+            {
+                throw new Exception("Foreign key attribute is not found.2");
+            }
+
+            foreignKeyProperty = fkProperty;
+            break;
+        }
+
+        if (foreignKeyProperty == null)
+        {
+            throw new Exception("Foreign key property is not found.3");
+        }
+
+        var collectionName = typeof(TProperty).Name.Pluralize().Underscore();
+
+        _includeReferences.Add(
+            new IncludeReference()
+            {
+                Order = 1,
+                Destination = new()
+                {
+                    PropertyInfo = property,
+                    CollectionName = Source!.CollectionNamespace.CollectionName
+                },
+                Source = new()
+                {
+                    CollectionName = collectionName,
+                    PropertyInfo = foreignKeyProperty
+                }
+            });
         return new IncludableQueryable<T, TProperty>(this, _includeReferences);
     }
 

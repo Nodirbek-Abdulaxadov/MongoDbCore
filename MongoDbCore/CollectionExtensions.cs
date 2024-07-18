@@ -155,70 +155,111 @@ public static class CollectionExtensions
         where TDocument : BaseEntity
         where TDbContext : MongoDbContext
     {
-        if (item is null || includeReferences is null) return item;
+        if (item == null || includeReferences == null || dbContext == null) return item;
 
-        foreach(var reference in includeReferences.Where(x => x.Order == 1))
+        foreach (var reference in includeReferences.Where(x => x.Order == 1))
         {
             var source = reference.Source;
             var destination = reference.Destination;
 
-            if (source is null || destination is null) continue;
-
-            var sourceProperty = source.PropertyInfo;
-            var destinationProperty = destination.PropertyInfo;
-
-            if (sourceProperty is null || destinationProperty is null) continue;
+            if (source?.PropertyInfo == null || destination?.PropertyInfo == null) continue;
 
             var collectionName = source.CollectionName;
+            if (string.IsNullOrEmpty(collectionName)) continue;
 
-            if (collectionName is null) continue;
+            var collection = dbContext!.GetCollection<BsonDocument>(collectionName);
+            if (collection == null) continue;
 
-            var collection = dbContext?.GetCollection<BsonDocument>(collectionName);
+            var filter = Builders<BsonDocument>.Filter.Eq(source.PropertyInfo.Name, item.Id);
+            var sourceValues = collection.Find(filter).ToList();
 
-            if (collection is null) continue;
+            if (sourceValues == null || !sourceValues.Any()) continue;
 
-            var filter = Builders<BsonDocument>.Filter.Eq(sourceProperty.Name, item.Id);
+            dynamic deserializedValue;
 
-            var destinationValue = collection.Find(filter).FirstOrDefault();
-
-            if (destinationValue is null) continue;
-
-            // Deserialize the dynamic object to the expected type
-            dynamic deserializedValue = BsonSerializer.Deserialize(destinationValue, destinationProperty.PropertyType);
-
-            foreach (var includeReference in includeReferences.Where(x => x.Order == 2))
+            // Check if the destination property is a collection
+            if (typeof(IEnumerable).IsAssignableFrom(destination.PropertyInfo.PropertyType))
             {
-                var source2 = includeReference.Source;
-                var destination2 = includeReference.Destination;
+                var itemTypeOfCollection = destination.PropertyInfo.PropertyType.GetGenericArguments()[0];
+                var collectionValues = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(itemTypeOfCollection))!;
 
-                if (source2 is null || destination2 is null) continue;
+                foreach (var value in sourceValues)
+                {
+                    dynamic deserializedItem = BsonSerializer.Deserialize(value, itemTypeOfCollection);
 
-                var sourceProperty2 = source2.PropertyInfo;
-                var destinationProperty2 = destination2.PropertyInfo;
+                    foreach (var includeReference in includeReferences.Where(x => x.Order == 2))
+                    {
+                        var source2 = includeReference.Source;
+                        var destination2 = includeReference.Destination;
 
-                if (sourceProperty2 is null || destinationProperty2 is null) continue;
+                        if (source2 is null || destination2 is null) continue;
 
-                var collectionName2 = source2.CollectionName;
+                        var sourceProperty2 = source2.PropertyInfo;
+                        var destinationProperty2 = destination2.PropertyInfo;
 
-                if (collectionName2 is null) continue;
+                        if (sourceProperty2 is null || destinationProperty2 is null) continue;
 
-                var collection2 = dbContext?.GetCollection<BsonDocument>(collectionName2);
+                        var collectionName2 = source2.CollectionName;
 
-                if (collection2 is null) continue;
+                        if (collectionName2 is null) continue;
 
-                var filter2 = Builders<BsonDocument>.Filter.Eq(sourceProperty2.Name, (string)deserializedValue.Id);
+                        var collection2 = dbContext?.GetCollection<BsonDocument>(collectionName2);
 
-                var destinationValue2 = collection2.Find(filter2).FirstOrDefault();
+                        if (collection2 is null) continue;
 
-                if (destinationValue2 is null) continue;
+                        var filter2 = Builders<BsonDocument>.Filter.Eq(sourceProperty2.Name, (string)deserializedItem.Id);
 
-                // Deserialize the dynamic object to the expected type
-                var deserializedValue2 = BsonSerializer.Deserialize(destinationValue2, destinationProperty2.PropertyType);
+                        var sourceValue2 = collection2.Find(filter2).FirstOrDefault();
 
-                destinationProperty2.SetValue(deserializedValue, deserializedValue2);
+                        if (sourceValue2 is null) continue;
+
+                        // Deserialize the dynamic object to the expected type
+                        var deserializedValue2 = BsonSerializer.Deserialize(sourceValue2, destinationProperty2.PropertyType);
+
+                        destinationProperty2.SetValue(deserializedItem, deserializedValue2);
+                    }
+                    collectionValues.Add(deserializedItem);
+                }
+                deserializedValue = collectionValues;
+            }
+            else
+            {
+                deserializedValue = BsonSerializer.Deserialize(sourceValues.FirstOrDefault(), destination.PropertyInfo.PropertyType);
+
+                foreach (var includeReference in includeReferences.Where(x => x.Order == 2))
+                {
+                    var source2 = includeReference.Source;
+                    var destination2 = includeReference.Destination;
+
+                    if (source2 is null || destination2 is null) continue;
+
+                    var sourceProperty2 = source2.PropertyInfo;
+                    var destinationProperty2 = destination2.PropertyInfo;
+
+                    if (sourceProperty2 is null || destinationProperty2 is null) continue;
+
+                    var collectionName2 = source2.CollectionName;
+
+                    if (collectionName2 is null) continue;
+
+                    var collection2 = dbContext?.GetCollection<BsonDocument>(collectionName2);
+
+                    if (collection2 is null) continue;
+
+                    var filter2 = Builders<BsonDocument>.Filter.Eq(sourceProperty2.Name, (string)deserializedValue.Id);
+
+                    var sourceValue2 = collection2.Find(filter2).FirstOrDefault();
+
+                    if (sourceValue2 is null) continue;
+
+                    // Deserialize the dynamic object to the expected type
+                    var deserializedValue2 = BsonSerializer.Deserialize(sourceValue2, destinationProperty2.PropertyType);
+
+                    destinationProperty2.SetValue(deserializedValue, deserializedValue2);
+                }
             }
 
-            destinationProperty.SetValue(item, deserializedValue);
+            destination.PropertyInfo.SetValue(item, deserializedValue);
         }
 
         return item;

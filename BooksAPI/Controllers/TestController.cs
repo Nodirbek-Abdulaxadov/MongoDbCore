@@ -1,4 +1,5 @@
 ﻿using MongoDB.Driver;
+using System.Diagnostics;
 
 namespace WebApplication1.Controllers;
 
@@ -16,11 +17,12 @@ public class TestController(AppDbContext dbContext) : ControllerBase
     [HttpGet("dsss")]
     public IActionResult Gets()
     {
-        var step1 = dbContext.ClassAs.Include(x => x.ClassB);
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        var res = dbContext.ClassAs.Include(x => x.ClassB).ThenInclude(x => x.ClassC).Include(x => x.ClassBList).ToList();
+        stopwatch.Stop();
+        Console.WriteLine(stopwatch.Elapsed.ToString());
 
-        var step3 = step1.ThenInclude(x => x.ClassC);
 
-        var res = step3.FirstOrDefault(x => x.Number > 80);
 
         return Ok(res);
     }

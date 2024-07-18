@@ -9,30 +9,17 @@ public interface IIncludableQueryable<T, T2> where T : BaseEntity
     #endregion
 
     #region Methods
-
-    /// <summary>
-    /// Configures the query to include related entities in the results.
-    /// </summary>
-    /// <param name="include"> The related entities to include. </param>
-    /// <returns> The results of the query including the related entities. </returns>
     IIncludableQueryable<T, TProperty> Include<TProperty>(Expression<Func<T, TProperty>> include);
 
-    /// <summary>
-    /// Process the ThenInclude on an entity collection.
-    /// </summary>
-    /// <typeparam name="TPreviousProperty"> The previous property type of the related entity to be included. </typeparam>
-    /// <typeparam name="TProperty"> The type of the related entity to be included. </typeparam>
-    /// <param name="include"> A lambda expression representing the navigation property to be included (<c> t =&gt; t.Property1 </c>). </param>
-    /// <returns> A new query with the related data included. </returns>
     IIncludableQueryable<T, TProperty> ThenInclude<TPreviousProperty, TProperty>(Expression<Func<TPreviousProperty, TProperty>> include);
 
-    /// <summary>
-    /// Specifies additional related data to be further included based on a related type that was just included.
-    /// </summary>
-    /// <typeparam name="TProperty"> The type of the related entity to be included. </typeparam>
-    /// <param name="include"> A lambda expression representing the navigation property to be included (<c> t =&gt; t.Property1 </c>). </param>
-    /// <returns> A new query with the related data included. </returns>
     IIncludableQueryable<T, TProperty> ThenInclude<TProperty>(Expression<Func<T2, TProperty>> include);
+
+    List<T> ToList();
+
+    T? FirstOrDefault();
+
+    T? FirstOrDefault(Expression<Func<T, bool>> predicate);
 
     #endregion
 }
