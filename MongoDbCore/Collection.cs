@@ -88,9 +88,9 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
     public long Count()
         => Source!.CountDocuments(FilterDefinition<T>.Empty);
 
-    public List<TT> Get<TT>()
+    public List<TDto> Get<TDto>()
     {
-        return DbContext.GetCollection<TT>(typeof(T).Name.Pluralize().Underscore()).Find(_=>true).ToList();
+        return DbContext.GetCollection<TDto>(typeof(T).Name.Pluralize().Underscore()).Find(_=>true).ToList();
     }
 
     #endregion
@@ -161,6 +161,7 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
     #endregion
 
     #region Extensions
+
     public IIncludableQueryable<T, TProperty> Include<TProperty>(Expression<Func<T, TProperty>> includeExpression)
         where TProperty : BaseEntity
     {
@@ -212,6 +213,7 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
 
         return new IncludableQueryable<T, TProperty>(this, _includeReferences);
     }
+
     public IIncludableQueryable<T, TProperty> Include<TProperty>(Expression<Func<T, IEnumerable<TProperty>>> includeExpression)
         where TProperty : BaseEntity
     {
@@ -262,218 +264,6 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
             });
         return new IncludableQueryable<T, TProperty>(this, _includeReferences);
     }
-
-    /*public Collection<T> Include<TProperty>(Expression<Func<T, TProperty>> includeExpression)
-        where TProperty : BaseEntity
-    {
-        var property = CollectionExtensions.ExtractProperty(includeExpression);
-
-        var propertyProperties = typeof(TProperty).GetProperties();
-        var foreignKeyProperties = propertyProperties.Where(x => x.GetCustomAttribute<ForeignKeyTo>() is not null).ToList();
-        if (!foreignKeyProperties.Any())
-        {
-            throw new Exception("Foreign key attribute is not found.");
-        }
-
-        PropertyInfo? foreignKeyProperty = default;
-
-        foreach (var fkProperty in foreignKeyProperties)
-        {
-            var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => (string)x.NamedArguments[0].TypedValue.Value! == typeof(T).Name);
-            if (attribute is null)
-            {
-                throw new Exception("Foreign key attribute is not found.2");
-            }
-
-            foreignKeyProperty = fkProperty;
-            break;
-        }
-
-        if (foreignKeyProperty == null)
-        {
-            throw new Exception("Foreign key property is not found.3");
-        }
-
-        var collectionName = property.PropertyType.Name.Pluralize().Underscore();
-
-        _includeReferences.Add(
-            new IncludeReference()
-            {
-                Order = 1,
-                Destination = new()
-                {
-                    PropertyInfo = property,
-                    CollectionName = Source!.CollectionNamespace.CollectionName
-                },
-                Source = new()
-                {
-                    CollectionName = collectionName,
-                    PropertyInfo = foreignKeyProperty
-                }
-            });
-        return this;
-    }*/
-    /*
-        public static Collection<T> ThenInclude<T, TPreviousProperty, TProperty>(this T source, Expression<Func<TPreviousProperty, TProperty>> includeExpression)
-            where T : BaseEntity
-            where TPreviousProperty : BaseEntity
-            where TProperty : BaseEntity
-        {
-            var property = CollectionExtensions.ExtractProperty(includeExpression);
-
-            var propertyProperties = typeof(TProperty).GetProperties();
-            var foreignKeyProperties = propertyProperties.Where(x => x.GetCustomAttribute<ForeignKeyTo>() is not null).ToList();
-            if (!foreignKeyProperties.Any())
-            {
-                throw new Exception("Foreign key attribute is not found.");
-            }
-
-            PropertyInfo? foreignKeyProperty = default;
-
-            foreach (var fkProperty in foreignKeyProperties)
-            {
-                var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => (string)x.NamedArguments[0].TypedValue.Value! == typeof(TPreviousProperty).Name);
-                if (attribute is null)
-                {
-                    throw new Exception("Foreign key attribute is not found.2");
-                }
-
-                foreignKeyProperty = fkProperty;
-                break;
-            }
-
-            if (foreignKeyProperty == null)
-            {
-                throw new Exception("Foreign key property is not found.3");
-            }
-
-            var foreignKeyPropertyName = foreignKeyProperty.Name;
-
-            var prevPropertyCollection = new Collection<TPreviousProperty>(dbContext);
-            var collectionName = property.PropertyType.Name.Pluralize().Underscore();
-
-            _includeReferences.Add(
-                new IncludeReference()
-                {
-                    Order = 2,
-                    Destination = new()
-                    {
-                        PropertyInfo = property,
-                        CollectionName = prevPropertyCollection.Source!.CollectionNamespace.CollectionName
-                    },
-                    Source = new()
-                    {
-                        CollectionName = collectionName,
-                        PropertyInfo = foreignKeyProperty
-                    }
-                });
-
-            return this;
-        }*/
-
-    /*
-        public Collection<T> Include<TProperty>(Expression<Func<T, IEnumerable<TProperty>>> includeExpression) where TProperty : BaseEntity
-        {
-            var property = CollectionExtensions.ExtractProperty(includeExpression);
-
-            var propertyProperties = typeof(TProperty).GetProperties();
-            var foreignKeyProperties = propertyProperties.Where(x => x.GetCustomAttribute<ForeignKeyTo>() is not null).ToList();
-            if (!foreignKeyProperties.Any())
-            {
-                throw new Exception("Foreign key attribute is not found.");
-            }
-
-            PropertyInfo? foreignKeyProperty = default;
-
-            foreach (var fkProperty in foreignKeyProperties)
-            {
-                var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => (string)x.NamedArguments[0].TypedValue.Value! == typeof(T).Name);
-                if (attribute is null)
-                {
-                    throw new Exception("Foreign key attribute is not found.2");
-                }
-
-                foreignKeyProperty = fkProperty;
-                break;
-            }
-
-            if (foreignKeyProperty == null)
-            {
-                throw new Exception("Foreign key property is not found.3");
-            }
-
-            var foreignKeyPropertyName = foreignKeyProperty.Name;
-
-            for (int i = 0; i < Count(); i++)
-            {
-                var item = this[i];
-
-                var filter = Builders<TProperty>.Filter.Eq(foreignKeyPropertyName, item.Id);
-
-                var collectionName = typeof(TProperty).Name.Pluralize().Underscore();
-                var collection = dbContext.GetCollection<TProperty>(collectionName);
-
-                var foreignPropertyValue = IAsyncCursorSourceExtensions.ToList(collection.Find(filter));
-
-                if (foreignPropertyValue != null)
-                {
-                    _includeReferences.Add(new IncludeReference()
-                    {
-                        Id = item.Id,
-                        Property = property,
-                        Value = foreignPropertyValue
-                    });
-                }
-            }
-
-            return this;
-        }*/
-
-
-    /*
-        public Collection<T> IncludeRef<TProperty>(Expression<Func<T, TProperty>> includeExpression) where TProperty : BaseEntity
-        {
-            var property = CollectionExtensions.ExtractProperty(includeExpression);
-
-            var refAttribute = property.GetCustomAttribute<ReferenceTo>();
-            if (refAttribute is null)
-            { 
-                throw new Exception("Reference To attribute is not found.");
-            }
-
-            if (string.IsNullOrEmpty(refAttribute.Entity))
-            {
-                throw new Exception("Entity name is not found.");
-            }
-
-            for (int i = 0; i < Count(); i++)
-            {
-                var item = this[i];
-                var obj = property.GetValue(item);
-                if (obj is not null)
-                {
-                    var value = (TProperty)obj;
-                    var filter = Builders<TProperty>.Filter.Eq("Id", (value).Id);
-
-                    var collectionName = property.PropertyType.Name.Pluralize().Underscore();
-                    var collection = dbContext.GetCollection<TProperty>(collectionName);
-
-                    var foreignPropertyValue = IAsyncCursorSourceExtensions.FirstOrDefault(collection.Find(filter));
-
-                    if (foreignPropertyValue != null)
-                    {
-                        _includeReferences.Add(new IncludeReference()
-                        {
-                            Id = item.Id,
-                            Property = property,
-                            Value = foreignPropertyValue
-                        });
-                    }
-                }
-            }
-
-            return this;
-        }*/
 
     public IFindFluent<T, T> AsFindFluent()
         => Source.Find(_ => true);

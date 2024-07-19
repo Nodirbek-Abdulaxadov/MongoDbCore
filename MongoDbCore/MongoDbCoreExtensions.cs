@@ -44,6 +44,7 @@ public static class MongoDbCoreExtensions
                 }
             }
             dbContext!.Initialize();
+            StaticServiceLocator.DbContext = dbContext;
             return dbContext;
         });
     }

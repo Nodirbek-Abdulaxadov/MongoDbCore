@@ -1,6 +1,4 @@
-﻿using MongoDbCore.Helpers;
-
-namespace MongoDbCore.Releationships;
+﻿namespace MongoDbCore.Releationships;
 
 public class IncludableQueryable<T, T2>(Collection<T> collection, List<IncludeReference> includeReferences) 
     : IIncludableQueryable<T, T2> where T : BaseEntity
@@ -183,6 +181,12 @@ public class IncludableQueryable<T, T2>(Collection<T> collection, List<IncludeRe
 
         return new IncludableQueryable<T, TProperty>(collection, IncludeReferences);
     }
+
+    public IFindFluent<T, T> Where<TProperty>(Expression<Func<T, bool>> predicate)
+        => collection.Where(predicate);
+
+    public long Count<TProperty>(Expression<Func<T, bool>> predicate)
+        => collection.Count();
 
     public List<T> ToList()
     {
