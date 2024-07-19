@@ -10,7 +10,7 @@ public class AppDbContext : MongoDbContext
 
     protected override async Task OnInitializedAsync()
     {
-        if (!WeatherForecasts.Any())
+       /* if (!WeatherForecasts.Any())
         {
             string[] Summaries =
             [
@@ -72,6 +72,6 @@ public class AppDbContext : MongoDbContext
             .ToArray();
 
             ClassDs.AddRange(mockData);
-        }
+        }*/
     }
 }

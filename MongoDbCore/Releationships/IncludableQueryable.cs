@@ -78,6 +78,7 @@ public class IncludableQueryable<T, T2>(Collection<T> collection, List<IncludeRe
 
         var reference = new IncludeReference()
         {
+            EqualityProperty = typeof(T).GetProperty("Id"),
             Order = 1,
             Destination = new()
             {
@@ -165,6 +166,7 @@ public class IncludableQueryable<T, T2>(Collection<T> collection, List<IncludeRe
 
         var reference = new IncludeReference()
         {
+            EqualityProperty = typeof(T).GetProperty("Id"),
             Order = 2,
             Destination = new()
             {

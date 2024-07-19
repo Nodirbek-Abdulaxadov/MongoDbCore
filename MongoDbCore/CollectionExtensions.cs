@@ -157,6 +157,7 @@ public static class CollectionExtensions
 
         var reference = new IncludeReference()
         {
+            EqualityProperty = typeof(T).GetProperty("Id")!,
             Order = 1,
             Destination = new()
             {
@@ -177,7 +178,7 @@ public static class CollectionExtensions
         where T : BaseEntity
         where TProperty : BaseEntity
     {
-        var property = CollectionExtensions.ExtractProperty(includeExpression);
+        var property = ExtractProperty(includeExpression);
 
         var propertyProperties = typeof(TProperty).GetProperties();
         var foreignKeyProperties = propertyProperties.Where(x => x.GetCustomAttribute<ForeignKeyTo>() is not null).ToList();
@@ -211,6 +212,7 @@ public static class CollectionExtensions
 
         var reference = new IncludeReference()
         {
+            EqualityProperty = typeof(T).GetProperty("Id")!,
             Order = 1,
             Destination = new()
             {
@@ -252,8 +254,24 @@ public static class CollectionExtensions
             var collection = dbContext.GetCollection<BsonDocument>(reference.Source.CollectionName!);
             if (collection == null) continue;
 
-            var filter = Builders<BsonDocument>.Filter.Eq(reference.Source.PropertyInfo.Name, item.Id);
-            var sourceValues = collection.Find(filter).ToList();  // Cast collection to IMongoCollection<BsonDocument> to use Find
+            var propertyName = reference.Source.PropertyInfo.Name;
+           /* if (propertyName == "Id")
+            {
+                propertyName = "_id";
+            }*/
+            var equalityValue = reference.EqualityProperty.GetValue(item);
+            if (equalityValue == null) continue;
+
+            var filter = Builders<BsonDocument>.Filter.Eq(propertyName, (string)equalityValue);
+            Expression<Func<BsonDocument, bool>> expression = doc => doc[propertyName] == (string)equalityValue;
+
+            // Additional logging for verification
+            //Console.WriteLine($"Filtering collection '{reference.Source.CollectionName}' with property '{propertyName}' and value '{equalityValue}'");
+
+            var sourceValues = collection.Find(filter).ToList();
+
+            // Logging the count of fetched values
+            //Console.WriteLine($"Found {sourceValues.Count} matching documents in collection '{reference.Source.CollectionName}'");
 
             if (sourceValues == null || !sourceValues.Any()) continue;
 
@@ -264,6 +282,8 @@ public static class CollectionExtensions
 
         return item;
     }
+
+
 
     private static dynamic DeserializeValue(IncludeReference reference, List<BsonDocument> sourceValues, List<IncludeReference> includeReferences, MongoDbContext dbContext)
     {
@@ -299,7 +319,7 @@ public static class CollectionExtensions
             if (collection == null) continue;
 
             var filter = Builders<BsonDocument>.Filter.Eq(includeReference.Source.PropertyInfo.Name, ((BaseEntity)deserializedItem).Id);
-            var sourceValue = collection.Find(filter).FirstOrDefault(); 
+            var sourceValue = collection.Find(filter).FirstOrDefault();
 
             if (sourceValue == null) continue;
 

@@ -1,6 +1,6 @@
 ﻿namespace MongoDbCore;
 
-public class Collection<T> : IEnumerable<T> where T : BaseEntity
+public class Collection<T> where T : BaseEntity
 {
     #region Initialize
 
@@ -9,7 +9,7 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
 
     private readonly bool _isCacheable;
     private IFindFluent<T, T>? _cache;
-    private List<T> _cacheAsList;
+    //private List<T> _cacheAsList;
     private List<IncludeReference> _includeReferences = [];
 
     public Collection(MongoDbContext dbContext)
@@ -17,15 +17,15 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
         DbContext = dbContext;
         Source = dbContext.GetCollection<T>(typeof(T).Name.Pluralize().Underscore());
         _isCacheable = CheckCacheablityOfTEntity();
-        _cacheAsList = IAsyncCursorSourceExtensions.ToList(Source.Find(_ => true));
+        //_cacheAsList = IAsyncCursorSourceExtensions.ToList(Source.Find(_ => true));
     }
 
     #endregion
 
-    public IEnumerator<T> GetEnumerator() => _cacheAsList.GetEnumerator();
+    #region Queries
+    /*public IEnumerator<T> GetEnumerator() => _cacheAsList.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    #region Queries
 
     public T this[int index]
     {
@@ -49,7 +49,7 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
                 Add(value);
             }
         }
-    }
+    }*/
 
     public List<T> ToList()
     {
@@ -178,7 +178,9 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
 
         foreach (var fkProperty in foreignKeyProperties)
         {
-            var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => (string)x.NamedArguments[0].TypedValue.Value! == typeof(T).Name);
+            var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => x.NamedArguments is not null && 
+                                                                            x.NamedArguments.Any() &&
+                                                                            (string)x.NamedArguments[0].TypedValue.Value! == typeof(T).Name);
             if (attribute is null)
             {
                 continue;
@@ -198,6 +200,7 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
         _includeReferences.Add(
             new IncludeReference()
             {
+                EqualityProperty = typeof(T).GetProperty("Id")!,
                 Order = 1,
                 Destination = new()
                 {
@@ -208,6 +211,72 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
                 {
                     CollectionName = collectionName,
                     PropertyInfo = foreignKeyProperty
+                }
+            });
+
+        return new IncludableQueryable<T, TProperty>(this, _includeReferences);
+    }
+
+    public IIncludableQueryable<T, TProperty> IncludeRef<TProperty>(Expression<Func<T, TProperty>> includeExpression) 
+        where TProperty : BaseEntity
+    {
+        var property = CollectionExtensions.ExtractProperty(includeExpression);
+
+        var refAttribute = property.GetCustomAttribute<ReferenceTo>();
+        if (refAttribute is null)
+        {
+            throw new Exception("Reference To attribute is not found.");
+        }
+
+        if (string.IsNullOrEmpty(refAttribute.Entity))
+        {
+            throw new Exception("Entity name is not found.");
+        }
+
+        var srcProperties = typeof(T).GetProperties();
+        var foreignKeyProperties = srcProperties.Where(x => x.GetCustomAttribute<ForeignKeyTo>() is not null).ToList();
+        if (!foreignKeyProperties.Any())
+        {
+            throw new Exception("Foreign key attribute is not found.");
+        }
+
+        PropertyInfo? foreignKeyProperty = null;
+
+        foreach (var fkProperty in foreignKeyProperties)
+        {
+            var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => x.NamedArguments is not null &&
+                                                                            x.NamedArguments.Any() &&
+                                                                            (string)x.NamedArguments[0].TypedValue.Value! == typeof(TProperty).Name);
+            if (attribute is null)
+            {
+                continue;
+            }
+
+            foreignKeyProperty = fkProperty;
+            break;
+        }
+
+        if (foreignKeyProperty == null)
+        {
+            throw new Exception("Foreign key property is not found.");
+        }
+
+        var collectionName = typeof(TProperty).Name.Pluralize().Underscore();
+
+        _includeReferences.Add(
+            new IncludeReference()
+            {
+                EqualityProperty = foreignKeyProperty,
+                Order = 1,
+                Destination = new()
+                {
+                    PropertyInfo = property,
+                    CollectionName = Source!.CollectionNamespace.CollectionName
+                },
+                Source = new()
+                {
+                    CollectionName = collectionName,
+                    PropertyInfo = typeof(TProperty).GetProperty("Id")
                 }
             });
 
@@ -230,7 +299,9 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
 
         foreach (var fkProperty in foreignKeyProperties)
         {
-            var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => (string)x.NamedArguments[0].TypedValue.Value! == typeof(T).Name);
+            var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => x.NamedArguments is not null && 
+                                                                            x.NamedArguments.Any() &&
+                                                                            (string)x.NamedArguments[0].TypedValue.Value! == typeof(T).Name);
             if (attribute is null)
             {
                 throw new Exception("Foreign key attribute is not found.2");
@@ -250,6 +321,7 @@ public class Collection<T> : IEnumerable<T> where T : BaseEntity
         _includeReferences.Add(
             new IncludeReference()
             {
+                EqualityProperty = typeof(T).GetProperty("Id")!,
                 Order = 1,
                 Destination = new()
                 {
