@@ -78,7 +78,7 @@ public class IncludableQueryable<T, T2>(Collection<T> collection, List<IncludeRe
 
         var reference = new IncludeReference()
         {
-            EqualityProperty = typeof(T).GetProperty("Id"),
+            EqualityProperty = typeof(T).GetProperty("Id")!,
             Order = 1,
             Destination = new()
             {
@@ -95,6 +95,45 @@ public class IncludableQueryable<T, T2>(Collection<T> collection, List<IncludeRe
 
         return new IncludableQueryable<T, TProperty>(collection, IncludeReferences);
     }
+    public IIncludableQueryable<T, TProperty> IncludeRef<TProperty>(Expression<Func<T, TProperty>> include)
+    {
+        var property = CollectionExtensions.ExtractProperty(include);
+
+        PropertyInfo? refProperty = null;
+        string? refPropertyName = null;
+        var properties = typeof(T).GetProperties();
+        foreach (var propertyInfo in properties)
+        {
+            var refAttribute = propertyInfo.GetCustomAttribute<ReferenceTo>();
+            if (refAttribute is not null && !string.IsNullOrEmpty(refAttribute.Entity))
+            {
+                refProperty = propertyInfo;
+                refPropertyName = refAttribute.Entity;
+                break;
+            }
+        }
+
+        var collectionName = typeof(TProperty).Name.Pluralize().Underscore();
+
+        IncludeReferences.Add(
+            new IncludeReference()
+            {
+                EqualityProperty = refProperty!,
+                Order = 1,
+                Destination = new()
+                {
+                    PropertyInfo = property,
+                    CollectionName = collection.Source!.CollectionNamespace.CollectionName
+                },
+                Source = new()
+                {
+                    CollectionName = collectionName,
+                    PropertyInfo = typeof(TProperty).GetProperty("Id")
+                }
+            });
+
+        return new IncludableQueryable<T, TProperty>(collection, IncludeReferences);
+    }
 
     /// <inheritdoc />
     public IIncludableQueryable<T, TProperty> ThenInclude<TPreviousProperty, TProperty>(Expression<Func<TPreviousProperty, TProperty>> include)
@@ -108,6 +147,9 @@ public class IncludableQueryable<T, T2>(Collection<T> collection, List<IncludeRe
         var property = CollectionExtensions.ExtractProperty(include);
         PropertyInfo? foreignKeyProperty = null;
         var collectionName = property.PropertyType.Name.Pluralize().Underscore();
+        var s = typeof(T).Name;
+        var s2 = typeof(T2).Name;
+        var s3 = typeof(TProperty).Name;
 
         if (typeof(IEnumerable).IsAssignableFrom(property.PropertyType))
         {
@@ -148,7 +190,12 @@ public class IncludableQueryable<T, T2>(Collection<T> collection, List<IncludeRe
 
             foreach (var fkProperty in foreignKeyProperties)
             {
-                var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => (string)x.NamedArguments[0].TypedValue.Value! == typeof(T2).Name);
+                var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => x.NamedArguments is not null &&
+                                                                                x.NamedArguments.Any() &&
+                                                                                (string)x.NamedArguments[0].TypedValue.Value! == typeof(T2).Name ||
+                                                                                x.ConstructorArguments is not null &&
+                                                                                x.ConstructorArguments.Any() &&
+                                                                                (string)x.ConstructorArguments[0].Value! == typeof(T2).Name);
                 if (attribute is null)
                 {
                     continue;
@@ -166,7 +213,7 @@ public class IncludableQueryable<T, T2>(Collection<T> collection, List<IncludeRe
 
         var reference = new IncludeReference()
         {
-            EqualityProperty = typeof(T).GetProperty("Id"),
+            EqualityProperty = typeof(T).GetProperty("Id")!,
             Order = 2,
             Destination = new()
             {
@@ -199,14 +246,16 @@ public class IncludableQueryable<T, T2>(Collection<T> collection, List<IncludeRe
 
     public T? FirstOrDefault()
     {
+        var item = collection.FirstOrDefault();
         IncludeReferences.Clear();
-        return collection.FirstOrDefault();
+        return item;
     }
 
     public T? FirstOrDefault(Expression<Func<T, bool>> predicate)
     {
+        var items = collection.FirstOrDefault(predicate);
         IncludeReferences.Clear();
-        return collection.FirstOrDefault(predicate);
+        return items;
     }
 
     #endregion

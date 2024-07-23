@@ -10,6 +10,7 @@ public interface IIncludableQueryable<T, T2> where T : BaseEntity
 
     #region Methods
     IIncludableQueryable<T, TProperty> Include<TProperty>(Expression<Func<T, TProperty>> include);
+    IIncludableQueryable<T, TProperty> IncludeRef<TProperty>(Expression<Func<T, TProperty>> include);
 
     IIncludableQueryable<T, TProperty> ThenInclude<TPreviousProperty, TProperty>(Expression<Func<TPreviousProperty, TProperty>> include);
 

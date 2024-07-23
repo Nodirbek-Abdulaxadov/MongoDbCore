@@ -136,7 +136,12 @@ public static class CollectionExtensions
 
         foreach (var fkProperty in foreignKeyProperties)
         {
-            var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => (string)x.NamedArguments[0].TypedValue.Value! == typeof(T).Name);
+            var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => x.NamedArguments is not null &&
+                                                                            x.NamedArguments.Any() &&
+                                                                            (string)x.NamedArguments[0].TypedValue.Value! == typeof(T).Name ||
+                                                                            x.ConstructorArguments is not null &&
+                                                                            x.ConstructorArguments.Any() &&
+                                                                            (string)x.ConstructorArguments[0].Value! == typeof(T).Name);
             if (attribute is null)
             {
                 continue;
@@ -174,6 +179,48 @@ public static class CollectionExtensions
         return new IncludableQueryable<T, TProperty>(new Collection<T>(dbContext!), [reference]);
     }
 
+    public static IIncludableQueryable<T, TProperty> IncludeRef<T, TProperty>(this IFindFluent<T, T> findFluent, Expression<Func<T, TProperty>> includeExpression)
+        where T : BaseEntity
+        where TProperty : BaseEntity
+    {
+        var property = ExtractProperty(includeExpression);
+
+        PropertyInfo? refProperty = null;
+        string? refPropertyName = null;
+        var properties = typeof(T).GetProperties();
+        foreach (var propertyInfo in properties)
+        {
+            var refAttribute = propertyInfo.GetCustomAttribute<ReferenceTo>();
+            if (refAttribute is not null && !string.IsNullOrEmpty(refAttribute.Entity))
+            {
+                refProperty = propertyInfo;
+                refPropertyName = refAttribute.Entity;
+            }
+        }
+
+        var dbContext = StaticServiceLocator.DbContext;
+        var sourceCollectionName = typeof(T).Name.Pluralize().Underscore();
+        var collectionName = typeof(TProperty).Name.Pluralize().Underscore();
+
+        var reference = new IncludeReference()
+        {
+            EqualityProperty = refProperty!,
+            Order = 1,
+            Destination = new()
+            {
+                PropertyInfo = property,
+                CollectionName = sourceCollectionName
+            },
+            Source = new()
+            {
+                CollectionName = collectionName,
+                PropertyInfo = typeof(TProperty).GetProperty("Id")
+            }
+        };
+
+        return new IncludableQueryable<T, TProperty>(new Collection<T>(dbContext!), [reference]);
+    }
+
     public static IIncludableQueryable<T, TProperty> Include<T, TProperty>(this IFindFluent<T, T> findFluent, Expression<Func<T, IEnumerable<TProperty>>> includeExpression)
         where T : BaseEntity
         where TProperty : BaseEntity
@@ -191,7 +238,12 @@ public static class CollectionExtensions
 
         foreach (var fkProperty in foreignKeyProperties)
         {
-            var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => (string)x.NamedArguments[0].TypedValue.Value! == typeof(T).Name);
+            var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => x.NamedArguments is not null &&
+                                                                            x.NamedArguments.Any() &&
+                                                                            (string)x.NamedArguments[0].TypedValue.Value! == typeof(T).Name ||
+                                                                            x.ConstructorArguments is not null &&
+                                                                            x.ConstructorArguments.Any() &&
+                                                                            (string)x.ConstructorArguments[0].Value! == typeof(T).Name);
             if (attribute is null)
             {
                 throw new Exception("Foreign key attribute is not found.2");
@@ -242,8 +294,8 @@ public static class CollectionExtensions
     }
 
     private static TDocument? SetReferences<TDocument, TDbContext>(TDocument item, List<IncludeReference>? includeReferences, TDbContext? dbContext)
-    where TDocument : BaseEntity
-    where TDbContext : MongoDbContext
+        where TDocument : BaseEntity
+        where TDbContext : MongoDbContext
     {
         if (item == null || includeReferences == null || dbContext == null) return item;
 
@@ -254,24 +306,20 @@ public static class CollectionExtensions
             var collection = dbContext.GetCollection<BsonDocument>(reference.Source.CollectionName!);
             if (collection == null) continue;
 
-            var propertyName = reference.Source.PropertyInfo.Name;
-           /* if (propertyName == "Id")
+            var equalityValue = (string?)reference.EqualityProperty.GetValue(item);
+            if (string.IsNullOrEmpty(equalityValue)) continue;
+
+            var equalityPropertyName = reference.Source.PropertyInfo.Name;
+            if (equalityPropertyName == "Id")
             {
-                propertyName = "_id";
-            }*/
-            var equalityValue = reference.EqualityProperty.GetValue(item);
-            if (equalityValue == null) continue;
+                equalityPropertyName = "_id";
+            }
 
-            var filter = Builders<BsonDocument>.Filter.Eq(propertyName, (string)equalityValue);
-            Expression<Func<BsonDocument, bool>> expression = doc => doc[propertyName] == (string)equalityValue;
-
-            // Additional logging for verification
-            //Console.WriteLine($"Filtering collection '{reference.Source.CollectionName}' with property '{propertyName}' and value '{equalityValue}'");
+            var filter = equalityPropertyName == "_id"
+                ? Builders<BsonDocument>.Filter.Eq(equalityPropertyName, ObjectId.Parse(equalityValue))
+                : Builders<BsonDocument>.Filter.Eq(equalityPropertyName, equalityValue);
 
             var sourceValues = collection.Find(filter).ToList();
-
-            // Logging the count of fetched values
-            //Console.WriteLine($"Found {sourceValues.Count} matching documents in collection '{reference.Source.CollectionName}'");
 
             if (sourceValues == null || !sourceValues.Any()) continue;
 
@@ -282,8 +330,6 @@ public static class CollectionExtensions
 
         return item;
     }
-
-
 
     private static dynamic DeserializeValue(IncludeReference reference, List<BsonDocument> sourceValues, List<IncludeReference> includeReferences, MongoDbContext dbContext)
     {

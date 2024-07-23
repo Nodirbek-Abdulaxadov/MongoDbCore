@@ -9,4 +9,6 @@ public abstract class BaseEntity
     public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow.AddHours(5);
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow.AddHours(5);
+
+    public static string NewId => ObjectId.GenerateNewId().ToString();
 }

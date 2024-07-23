@@ -222,43 +222,17 @@ public class Collection<T> where T : BaseEntity
     {
         var property = CollectionExtensions.ExtractProperty(includeExpression);
 
-        var refAttribute = property.GetCustomAttribute<ReferenceTo>();
-        if (refAttribute is null)
+        PropertyInfo? refProperty = null;
+        string? refPropertyName = null;
+        var properties = typeof(T).GetProperties();
+        foreach (var propertyInfo in properties)
         {
-            throw new Exception("Reference To attribute is not found.");
-        }
-
-        if (string.IsNullOrEmpty(refAttribute.Entity))
-        {
-            throw new Exception("Entity name is not found.");
-        }
-
-        var srcProperties = typeof(T).GetProperties();
-        var foreignKeyProperties = srcProperties.Where(x => x.GetCustomAttribute<ForeignKeyTo>() is not null).ToList();
-        if (!foreignKeyProperties.Any())
-        {
-            throw new Exception("Foreign key attribute is not found.");
-        }
-
-        PropertyInfo? foreignKeyProperty = null;
-
-        foreach (var fkProperty in foreignKeyProperties)
-        {
-            var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => x.NamedArguments is not null &&
-                                                                            x.NamedArguments.Any() &&
-                                                                            (string)x.NamedArguments[0].TypedValue.Value! == typeof(TProperty).Name);
-            if (attribute is null)
+            var refAttribute = propertyInfo.GetCustomAttribute<ReferenceTo>();
+            if (refAttribute is not null && !string.IsNullOrEmpty(refAttribute.Entity))
             {
-                continue;
+                refProperty = propertyInfo;
+                refPropertyName = refAttribute.Entity;
             }
-
-            foreignKeyProperty = fkProperty;
-            break;
-        }
-
-        if (foreignKeyProperty == null)
-        {
-            throw new Exception("Foreign key property is not found.");
         }
 
         var collectionName = typeof(TProperty).Name.Pluralize().Underscore();
@@ -266,7 +240,7 @@ public class Collection<T> where T : BaseEntity
         _includeReferences.Add(
             new IncludeReference()
             {
-                EqualityProperty = foreignKeyProperty,
+                EqualityProperty = refProperty!,
                 Order = 1,
                 Destination = new()
                 {
@@ -301,10 +275,13 @@ public class Collection<T> where T : BaseEntity
         {
             var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => x.NamedArguments is not null && 
                                                                             x.NamedArguments.Any() &&
-                                                                            (string)x.NamedArguments[0].TypedValue.Value! == typeof(T).Name);
+                                                                            (string)x.NamedArguments[0].TypedValue.Value! == typeof(T).Name ||
+                                                                            x.ConstructorArguments is not null &&
+                                                                            x.ConstructorArguments.Any() &&
+                                                                            (string)x.ConstructorArguments[0].Value! == typeof(T).Name);
             if (attribute is null)
             {
-                throw new Exception("Foreign key attribute is not found.2");
+                continue;
             }
 
             foreignKeyProperty = fkProperty;
