@@ -54,20 +54,20 @@ public static class CollectionExtensions
     #endregion
 
     #region FirstOrDefault without expression
-    public static TProjection? FirstOrDefaultAsync<TDocument, TProjection>(this IFindFluent<TDocument, TProjection> find, CancellationToken cancellationToken = default)
+    public static Task<TProjection> FirstOrDefaultAsync<TDocument, TProjection>(this IFindFluent<TDocument, TProjection> find, CancellationToken cancellationToken = default)
         where TProjection : BaseEntity
-        => IAsyncCursorSourceExtensions.FirstOrDefault(find, cancellationToken);
+        => IAsyncCursorSourceExtensions.FirstOrDefaultAsync(find, cancellationToken);
 
     public static TProjection? FirstOrDefault<TDocument, TProjection>(this IFindFluent<TDocument, TProjection> find)
         where TProjection : BaseEntity
         => IAsyncCursorSourceExtensions.FirstOrDefault(find);
 
-    public static TProjection? FirstOrDefaultAsync<TDocument, TProjection, TDbContext>(this IFindFluent<TDocument, TProjection> find, List<IncludeReference>? includeReferences = default, TDbContext? dbContext = default, CancellationToken cancellationToken = default)
+    public static Task<TProjection?> FirstOrDefaultAsync<TDocument, TProjection, TDbContext>(this IFindFluent<TDocument, TProjection> find, List<IncludeReference>? includeReferences = default, TDbContext? dbContext = default, CancellationToken cancellationToken = default)
         where TProjection : BaseEntity
         where TDbContext : MongoDbContext
     {
         Ensure.IsNotNull(find, nameof(find));
-        return find.Limit(1).FirstOrDefault2(includeReferences, dbContext, cancellationToken);
+        return Task.FromResult(find.Limit(1).FirstOrDefault2(includeReferences, dbContext, cancellationToken));
     }
 
     public static TProjection? FirstOrDefault<TDocument, TProjection, TDbContext>(this IFindFluent<TDocument, TProjection> find, List<IncludeReference>? includeReferences = default, TDbContext? dbContext = default)
@@ -111,20 +111,20 @@ public static class CollectionExtensions
     #endregion
 
     #region FirstOrDefault with expression
-    public static TDocument? FirstOrDefaultAsync<TDocument>(this IFindFluent<TDocument, TDocument> find, Expression<Func<TDocument, bool>> filter, CancellationToken cancellationToken = default)
+    public static Task<TDocument> FirstOrDefaultAsync<TDocument>(this IFindFluent<TDocument, TDocument> find, Expression<Func<TDocument, bool>> filter, CancellationToken cancellationToken = default)
         where TDocument : BaseEntity
     {
         find.Filter = filter;
-        return IAsyncCursorSourceExtensions.FirstOrDefault(find, cancellationToken);
+        return IAsyncCursorSourceExtensions.FirstOrDefaultAsync(find, cancellationToken);
     }
 
-    public static TDocument? FirstOrDefaultAsync<TDocument, TDbContext>(this IFindFluent<TDocument, TDocument> find, Expression<Func<TDocument, bool>> filter, List<IncludeReference>? includeReferences = default, TDbContext? dbContext = default, CancellationToken cancellationToken = default)
+    public static Task<TDocument?> FirstOrDefaultAsync<TDocument, TDbContext>(this IFindFluent<TDocument, TDocument> find, Expression<Func<TDocument, bool>> filter, List<IncludeReference>? includeReferences = default, TDbContext? dbContext = default, CancellationToken cancellationToken = default)
         where TDocument : BaseEntity
         where TDbContext : MongoDbContext
     {
         Ensure.IsNotNull(find, nameof(find));
         find.Filter = filter;
-        return find.Limit(1).FirstOrDefault2(includeReferences, dbContext, cancellationToken);
+        return Task.FromResult(find.Limit(1).FirstOrDefault2(includeReferences, dbContext, cancellationToken));
     }
     
     public static TDocument? FirstOrDefault<TDocument>(this IFindFluent<TDocument, TDocument> find, Expression<Func<TDocument, bool>> filter)
