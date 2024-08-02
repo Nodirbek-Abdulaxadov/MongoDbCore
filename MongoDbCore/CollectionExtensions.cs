@@ -321,12 +321,13 @@ public static class CollectionExtensions
     }
 
     private static TDocument? SetReferences<TDocument, TDbContext>(TDocument item, List<IncludeReference>? includeReferences, TDbContext? dbContext)
-        where TDocument : BaseEntity
-        where TDbContext : MongoDbContext
+    where TDocument : BaseEntity
+    where TDbContext : MongoDbContext
     {
         if (item == null || includeReferences == null || dbContext == null) return item;
 
-        foreach (var reference in includeReferences.Where(x => x.Order == 1))
+        var primaryReferences = includeReferences.Where(x => x.Order == 1).ToList();
+        foreach (var reference in primaryReferences)
         {
             if (reference.Source?.PropertyInfo == null || reference.Destination?.PropertyInfo == null) continue;
 
@@ -384,7 +385,8 @@ public static class CollectionExtensions
 
     private static void SetNestedReferences(object deserializedItem, List<IncludeReference> includeReferences, MongoDbContext dbContext)
     {
-        foreach (var includeReference in includeReferences.Where(x => x.Order == 2))
+        var nestedReferences = includeReferences.Where(x => x.Order == 2).ToList();
+        foreach (var includeReference in nestedReferences)
         {
             if (includeReference.Source?.PropertyInfo == null || includeReference.Destination?.PropertyInfo == null) continue;
 
@@ -400,5 +402,6 @@ public static class CollectionExtensions
             includeReference.Destination.PropertyInfo.SetValue(deserializedItem, deserializedValue);
         }
     }
+
     #endregion
 }
