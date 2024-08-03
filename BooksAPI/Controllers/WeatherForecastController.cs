@@ -1,3 +1,4 @@
+using MongoDB.Driver;
 using System.Diagnostics;
 
 namespace WebApplication1.Controllers;
@@ -13,28 +14,19 @@ public class WeatherForecastController(AppDbContext dbContext) : ControllerBase
     [HttpGet("get")]
     public IActionResult Gett()
     {
-        var result = dbContext.WeatherForecasts.Get<Type2>();
+        var result = dbContext.WeatherForecasts.ToList<WeatherForecastView>();
         return Ok(result);
     }
 
-    [HttpGet("id")]
+    [HttpGet("{id}")]
     public async Task<IActionResult> Get(string id)
     {
-        //var model = dbContext.WeatherForecasts.Include(x => x.SomeClass).ToList().FirstOrDefault(x => x.Id == id);
-        //if (model == null)
-        //{
-        //    return NotFound();
-        //}
-
-
-        //return Ok(model);
-
-        WeatherForecast weather = new();
-        var b = weather.GetType() == typeof(BaseEntity);
-        List<WeatherForecast> list = [weather];
-        var a = list.GetType() == typeof(IEnumerable<>);
-
-        return Ok(a + " " + b);
+        var weather = await dbContext.WeatherForecasts.FirstOrDefaultAsync(x => x.Id == id);
+        if (weather == null)
+        {
+            return NotFound();
+        }
+        return Ok(weather);
     }
 
     [HttpPost]

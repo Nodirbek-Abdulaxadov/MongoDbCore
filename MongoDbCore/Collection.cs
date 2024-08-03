@@ -1,4 +1,6 @@
-﻿namespace MongoDbCore;
+﻿using static Microsoft.AspNetCore.Hosting.Internal.HostingApplication;
+
+namespace MongoDbCore;
 
 public class Collection<T> where T : BaseEntity
 {
@@ -57,6 +59,12 @@ public class Collection<T> where T : BaseEntity
         _includeReferences.Clear();
         return res;
     }
+    public List<TResult> ToList<TResult>()
+    {
+        var res = Get<TResult>();
+        //_includeReferences.Clear();
+        return res;
+    }
 
     public Task<List<T>> ToListAsync(CancellationToken cancellationToken = default)
         => Get().ToListAsync(cancellationToken);
@@ -88,10 +96,10 @@ public class Collection<T> where T : BaseEntity
     public long Count()
         => Source!.CountDocuments(FilterDefinition<T>.Empty);
 
-    public List<TDto> Get<TDto>()
+    /*public List<TDto> Get<TDto>()
     {
         return DbContext.GetCollection<TDto>(typeof(T).Name.Pluralize().Underscore()).Find(_=>true).ToList();
-    }
+    }*/
 
     #endregion
 
@@ -356,6 +364,13 @@ public class Collection<T> where T : BaseEntity
         }
 
         return _cache;
+    }
+
+    private List<TResult> Get<TResult>(FilterDefinition<TResult>? filter = null)
+    {
+        return DbContext.GetCollection<TResult>(typeof(T).Name.Pluralize().Underscore())
+                        .Find(filter ?? FilterDefinition<TResult>.Empty)
+                        .ToList();
     }
 
     #endregion
