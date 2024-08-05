@@ -34,7 +34,12 @@ public class IncludableQueryable<T, T2>(Collection<T> collection, List<IncludeRe
 
             foreach (var fkProperty in foreignKeyProperties)
             {
-                var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => (string)x.NamedArguments[0].TypedValue.Value! == typeof(T).Name);
+                var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => x.NamedArguments is not null &&
+                                                                                x.NamedArguments.Any() &&
+                                                                                (string)x.NamedArguments[0].TypedValue.Value! == typeof(T).Name ||
+                                                                                x.ConstructorArguments is not null &&
+                                                                                x.ConstructorArguments.Any() &&
+                                                                                (string)x.ConstructorArguments[0].Value! == typeof(T).Name);
                 if (attribute is null)
                 {
                     continue;
@@ -60,7 +65,12 @@ public class IncludableQueryable<T, T2>(Collection<T> collection, List<IncludeRe
 
             foreach (var fkProperty in foreignKeyProperties)
             {
-                var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => (string)x.NamedArguments[0].TypedValue.Value! == typeof(T).Name);
+                var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => x.NamedArguments is not null &&
+                                                                                x.NamedArguments.Any() &&
+                                                                                (string)x.NamedArguments[0].TypedValue.Value! == typeof(TProperty).Name ||
+                                                                                x.ConstructorArguments is not null &&
+                                                                                x.ConstructorArguments.Any() &&
+                                                                                (string)x.ConstructorArguments[0].Value! == typeof(TProperty).Name);
                 if (attribute is null)
                 {
                     continue;
@@ -72,7 +82,7 @@ public class IncludableQueryable<T, T2>(Collection<T> collection, List<IncludeRe
 
             if (foreignKeyProperty == null)
             {
-                throw new Exception("Foreign key property is not found.");
+                return new IncludableQueryable<T, TProperty>(collection, IncludeReferences); ;
             }
         }
 

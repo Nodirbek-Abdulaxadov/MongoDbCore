@@ -178,9 +178,12 @@ public class Collection<T> where T : BaseEntity
 
         foreach (var fkProperty in foreignKeyProperties)
         {
-            var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => x.NamedArguments is not null && 
+            var attribute = fkProperty.CustomAttributes.FirstOrDefault(x => x.NamedArguments is not null &&
                                                                             x.NamedArguments.Any() &&
-                                                                            (string)x.NamedArguments[0].TypedValue.Value! == typeof(T).Name);
+                                                                            (string)x.NamedArguments[0].TypedValue.Value! == typeof(T).Name ||
+                                                                            x.ConstructorArguments is not null &&
+                                                                            x.ConstructorArguments.Any() &&
+                                                                            (string)x.ConstructorArguments[0].Value! == typeof(T).Name);
             if (attribute is null)
             {
                 continue;
@@ -192,7 +195,7 @@ public class Collection<T> where T : BaseEntity
 
         if (foreignKeyProperty == null)
         {
-            throw new Exception("Foreign key property is not found.");
+            return new IncludableQueryable<T, TProperty>(this, _includeReferences);
         }
 
         var collectionName = property.PropertyType.Name.Pluralize().Underscore();
