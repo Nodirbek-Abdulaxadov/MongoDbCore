@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace WebApplication1.Controllers;
 
 [ApiController]
@@ -8,33 +6,20 @@ public class WeatherForecastController(AppDbContext dbContext) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> Get()
-        => Ok(await dbContext.WeatherForecasts.ToListAsync());
-
-    [HttpGet("get")]
-    public IActionResult Gett()
     {
-        var result = dbContext.WeatherForecasts.Get<Type2>();
-        return Ok(result);
+        var list = await dbContext.WeatherForecasts.ToListAsync();
+        return Ok(list);
     }
 
-    [HttpGet("id")]
+    [HttpGet("{id}")]
     public async Task<IActionResult> Get(string id)
     {
-        //var model = dbContext.WeatherForecasts.Include(x => x.SomeClass).ToList().FirstOrDefault(x => x.Id == id);
-        //if (model == null)
-        //{
-        //    return NotFound();
-        //}
-
-
-        //return Ok(model);
-
-        WeatherForecast weather = new();
-        var b = weather.GetType() == typeof(BaseEntity);
-        List<WeatherForecast> list = [weather];
-        var a = list.GetType() == typeof(IEnumerable<>);
-
-        return Ok(a + " " + b);
+        var model = await dbContext.WeatherForecasts.FirstOrDefaultAsync(x => x.Id == id);
+        if (model == null)
+        {
+            return NotFound();
+        }
+        return Ok(model);
     }
 
     [HttpPost]
@@ -73,7 +58,7 @@ public class WeatherForecastController(AppDbContext dbContext) : ControllerBase
         }
     }
 
-    [HttpDelete("id")]
+    [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(string id)
     {
         try

@@ -1,13 +1,12 @@
 ﻿namespace MongoDbCore.Releationships;
 
-public class IncludableQueryable<T, T2>(Collection<T> collection, List<IncludeReference> includeReferences) 
+public class IncludableQueryable<T, T2>(Collection<T> collection, List<IncludeReference> includeReferences, FilterDefinition<T>? filter = null) 
     : IIncludableQueryable<T, T2> where T : BaseEntity
 {
     #region Fields
 
     Collection<T> IIncludableQueryable<T, T2>.Collection => collection;
     private List<IncludeReference> IncludeReferences { get; set; } = includeReferences;
-
     public List<IncludeReference> GetIncludeReferences() => IncludeReferences;
 
     #endregion
@@ -249,7 +248,16 @@ public class IncludableQueryable<T, T2>(Collection<T> collection, List<IncludeRe
 
     public List<T> ToList()
     {
-        var result = CollectionExtensions.ToList(collection.AsFindFluent(), IncludeReferences, collection.DbContext);
+        filter ??= FilterDefinition<T>.Empty;
+        var result = CollectionExtensions.ToList(collection.Where(filter), IncludeReferences, collection.DbContext);
+        IncludeReferences.Clear();
+        return result;
+    }
+
+    public Task<List<T>> ToListAsync()
+    {
+        filter ??= FilterDefinition<T>.Empty;
+        var result = CollectionExtensions.ToListAsync(collection.Where(filter), IncludeReferences, collection.DbContext);
         IncludeReferences.Clear();
         return result;
     }
@@ -266,6 +274,20 @@ public class IncludableQueryable<T, T2>(Collection<T> collection, List<IncludeRe
         var items = collection.FirstOrDefault(predicate);
         IncludeReferences.Clear();
         return items;
+    }
+
+    public Task<T?> FirstOrDefaultAsync()
+    {
+        var item = collection.FirstOrDefaultAsync();
+        IncludeReferences.Clear();
+        return item!;
+    }
+
+    public Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate)
+    {
+        var items = collection.FirstOrDefaultAsync(predicate);
+        IncludeReferences.Clear();
+        return items!;
     }
 
     #endregion

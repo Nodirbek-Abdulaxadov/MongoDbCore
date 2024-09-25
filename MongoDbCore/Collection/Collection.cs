@@ -9,7 +9,6 @@ public class Collection<T> where T : BaseEntity
 
     private readonly bool _isCacheable;
     private IFindFluent<T, T>? _cache;
-    //private List<T> _cacheAsList;
     private List<IncludeReference> _includeReferences = [];
 
     public Collection(MongoDbContext dbContext)
@@ -17,45 +16,22 @@ public class Collection<T> where T : BaseEntity
         DbContext = dbContext;
         Source = dbContext.GetCollection<T>(typeof(T).Name.Pluralize().Underscore());
         _isCacheable = CheckCacheablityOfTEntity();
-        //_cacheAsList = IAsyncCursorSourceExtensions.ToList(Source.Find(_ => true));
     }
 
     #endregion
 
     #region Queries
-    /*public IEnumerator<T> GetEnumerator() => _cacheAsList.GetEnumerator();
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-
-    public T this[int index]
-    {
-        get
-        {
-            // Implement logic to return item at index from your collection
-            return _cacheAsList![index];
-        }
-        set
-        {
-            // Implement logic to set item at index in your collection
-            var existingItem = _cacheAsList![index];
-            if (existingItem != null)
-            {
-                // Update the existing item with the new value
-                Update(value);
-            }
-            else
-            {
-                // Insert the new item at the specified index
-                Add(value);
-            }
-        }
-    }*/
-
     public List<T> ToList()
     {
-        var res = Get().ToList(_includeReferences, DbContext);
-        _includeReferences.Clear();
-        return res;
+        var findResults = Get();
+        if (_includeReferences.Any())
+        {
+            var res = findResults.ToList(_includeReferences, DbContext);
+            _includeReferences.Clear();
+            return res;
+        }
+
+        return findResults.ToList();
     }
 
     public Task<List<T>> ToListAsync(CancellationToken cancellationToken = default)
@@ -99,6 +75,10 @@ public class Collection<T> where T : BaseEntity
 
     public T Add(T entity)
     {
+        if (string.IsNullOrEmpty(entity.Id))
+        {
+            entity.Id = BaseEntity.NewId;
+        }
         Source!.InsertOne(entity);
         if (_isCacheable) UpdateCache();
         return entity;
@@ -106,6 +86,10 @@ public class Collection<T> where T : BaseEntity
 
     public async Task<T> AddAsync(T entity, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrEmpty(entity.Id))
+        {
+            entity.Id = BaseEntity.NewId;
+        }
         await Source!.InsertOneAsync(entity, null, cancellationToken);
         if (_isCacheable) UpdateCache();
         return entity;
@@ -127,6 +111,7 @@ public class Collection<T> where T : BaseEntity
 
     public T Update(T entity)
     {
+        //entity.UpdatedAt = DateTime.Now;
         Source!.ReplaceOne(x => x.Id == entity.Id, entity);
         if (_isCacheable) UpdateCache();
         return entity;
@@ -134,6 +119,7 @@ public class Collection<T> where T : BaseEntity
 
     public async Task<T> UpdateAsync(T entity, CancellationToken cancellationToken = default)
     {
+        //entity.UpdatedAt = DateTime.Now;
         var replaceOptions = new ReplaceOptions();
         await Source!.ReplaceOneAsync(x => x.Id == entity.Id, entity, replaceOptions, cancellationToken);
         if (_isCacheable) UpdateCache();
@@ -157,6 +143,32 @@ public class Collection<T> where T : BaseEntity
 
     public Task DeleteAsync(T entity, CancellationToken cancellationToken = default)
         => DeleteAsync(entity.Id, cancellationToken);
+
+    public void DeleteRange(IEnumerable<T> entities)
+    {
+        var ids = entities.Select(x => x.Id).ToList();
+        Source!.DeleteMany(Builders<T>.Filter.In(x => x.Id, ids));
+        if (_isCacheable) UpdateCache();
+    }
+
+    public async Task DeleteRangeAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
+    {
+        var ids = entities.Select(x => x.Id).ToList();
+        await Source!.DeleteManyAsync(Builders<T>.Filter.In(x => x.Id, ids), cancellationToken);
+        if (_isCacheable) UpdateCache();
+    }
+
+    public void DeleteAll()
+    {
+        Source!.DeleteMany(FilterDefinition<T>.Empty);
+        if (_isCacheable) UpdateCache();
+    }
+
+    public async Task DeleteAllAsync(CancellationToken cancellationToken = default)
+    {
+        await Source!.DeleteManyAsync(FilterDefinition<T>.Empty, cancellationToken);
+        if (_isCacheable) UpdateCache();
+    }
 
     #endregion
 
@@ -322,6 +334,9 @@ public class Collection<T> where T : BaseEntity
 
     public IFindFluent<T, T> Where(Expression<Func<T, bool>> predicate)
         => Source.Find(predicate);
+
+    public IFindFluent<T, T> Where(FilterDefinition<T> filter)
+        => Source.Find(filter);
 
     #endregion
 

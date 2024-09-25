@@ -12,7 +12,12 @@ public abstract class MongoDbContext
     public MongoDbContext(MongoDbCoreOptions options)
     {
         _options = options;
-        _client = new MongoClient(_options.Connection);
+
+        var mongoClientSettings = MongoClientSettings.FromConnectionString(_options.Connection);
+        mongoClientSettings.MaxConnectionPoolSize = options.MaxConnectionPoolSize;
+
+        _client = new MongoClient(mongoClientSettings);
+
         _database = _client.GetDatabase(_options.Database);
         _staticDatabase = _database;
     }
@@ -25,6 +30,16 @@ public abstract class MongoDbContext
     public static IMongoCollection<T> GetStaticCollection<T>(string name)
     {
         return _staticDatabase!.GetCollection<T>(name);
+    }
+
+    public void DropCollection(string name)
+    {
+        _database.DropCollection(name);
+    }
+
+    public async Task DropCollectionAsync(string name, CancellationToken cancellationToken = default)
+    {
+        await _database.DropCollectionAsync(name, cancellationToken);
     }
 
     public void HealthCheckDB()

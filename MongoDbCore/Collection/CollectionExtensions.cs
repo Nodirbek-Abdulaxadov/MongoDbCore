@@ -1,4 +1,6 @@
-﻿namespace MongoDbCore;
+﻿using System.Collections.Concurrent;
+
+namespace MongoDbCore;
 
 public static class CollectionExtensions
 {
@@ -22,10 +24,11 @@ public static class CollectionExtensions
         where T : BaseEntity
         => IAsyncCursorSourceExtensions.ToList(findFluent);
 
+    #region Sync
     public static List<T> ToList<T, TDbContext>(this IFindFluent<T, T> findFluent, List<IncludeReference>? includeReferences = default, TDbContext? dbContext = default)
-        where T : BaseEntity
-        where TDbContext : MongoDbContext
-        => ToListFromIAsyncCursorSource(findFluent, includeReferences, dbContext);
+    where T : BaseEntity
+    where TDbContext : MongoDbContext
+    => ToListFromIAsyncCursorSource(findFluent, includeReferences, dbContext);
 
     private static List<TDocument> ToListFromIAsyncCursorSource<TDocument, TDbContext>(this IAsyncCursorSource<TDocument> source, List<IncludeReference>? includeReferences = default, TDbContext? dbContext = default, CancellationToken cancellationToken = default)
         where TDocument : BaseEntity
@@ -39,18 +42,76 @@ public static class CollectionExtensions
         where TDocument : BaseEntity
         where TDbContext : MongoDbContext
     {
-        var list = new List<TDocument>();
+        var concurrentList = new ConcurrentBag<TDocument>();
 
         while (cursor.MoveNext(cancellationToken))
         {
             foreach (var item in cursor.Current)
             {
-                list.Add(SetReferences(item, includeReferences, dbContext)!);
+                concurrentList.Add(item);
             }
         }
 
-        return list;
+        if (includeReferences is not null && includeReferences.Any())
+        {
+            Parallel.ForEach(concurrentList, item =>
+            {
+                var processedItem = SetReferences(item, includeReferences, dbContext);
+                if (processedItem != null)
+                {
+                    concurrentList.Add(processedItem); // Thread-safe collection
+                }
+            });
+        }
+
+        return concurrentList.ToList(); // Convert ConcurrentBag to List before returning
+    } 
+    #endregion
+
+    #region Async
+    public static Task<List<T>> ToListAsync<T, TDbContext>(this IFindFluent<T, T> findFluent, List<IncludeReference>? includeReferences = default, TDbContext? dbContext = default)
+    where T : BaseEntity
+    where TDbContext : MongoDbContext
+    => ToListFromIAsyncCursorSourceAsync(findFluent, includeReferences, dbContext);
+
+    private static Task<List<TDocument>> ToListFromIAsyncCursorSourceAsync<TDocument, TDbContext>(this IAsyncCursorSource<TDocument> source, List<IncludeReference>? includeReferences = default, TDbContext? dbContext = default, CancellationToken cancellationToken = default)
+        where TDocument : BaseEntity
+        where TDbContext : MongoDbContext
+    {
+        using var cursor = source.ToCursor(cancellationToken);
+        return cursor.ToListFromIAsyncCursorAsync(includeReferences, dbContext, cancellationToken);
     }
+
+    private static async Task<List<TDocument>> ToListFromIAsyncCursorAsync<TDocument, TDbContext>(this IAsyncCursor<TDocument> cursor, List<IncludeReference>? includeReferences = null, TDbContext? dbContext = default, CancellationToken cancellationToken = default)
+        where TDocument : BaseEntity
+        where TDbContext : MongoDbContext
+    {
+        var concurrentList = new ConcurrentBag<TDocument>();
+
+        while (await cursor.MoveNextAsync(cancellationToken))
+        {
+            foreach (var item in cursor.Current)
+            {
+                concurrentList.Add(item);
+            }
+        }
+
+        if (includeReferences is not null && includeReferences.Any())
+        {
+            Parallel.ForEach(concurrentList, item =>
+            {
+                var processedItem = SetReferences(item, includeReferences, dbContext);
+                if (processedItem != null)
+                {
+                    concurrentList.Add(processedItem); // Thread-safe collection
+                }
+            });
+        }
+
+        return concurrentList.ToList(); // Convert ConcurrentBag to List before returning
+    } 
+    #endregion
+
     #endregion
 
     #region FirstOrDefault without expression
@@ -305,7 +366,7 @@ public static class CollectionExtensions
             }
         };
 
-        return new IncludableQueryable<T, TProperty>(new Collection<T>(dbContext!), [reference]);
+        return new IncludableQueryable<T, TProperty>(new Collection<T>(dbContext!), [reference], findFluent.Filter);
     }
     #endregion
 
