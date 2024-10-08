@@ -42,30 +42,18 @@ public static class CollectionExtensions
         where TDocument : BaseEntity
         where TDbContext : MongoDbContext
     {
-        var concurrentList = new ConcurrentBag<TDocument>();
+        var list = new List<TDocument>();
 
         while (cursor.MoveNext(cancellationToken))
         {
             foreach (var item in cursor.Current)
             {
-                concurrentList.Add(item);
+                list.Add(SetReferences(item, includeReferences, dbContext)!);
             }
         }
 
-        if (includeReferences is not null && includeReferences.Any())
-        {
-            Parallel.ForEach(concurrentList, item =>
-            {
-                var processedItem = SetReferences(item, includeReferences, dbContext);
-                if (processedItem != null)
-                {
-                    concurrentList.Add(processedItem); // Thread-safe collection
-                }
-            });
-        }
-
-        return concurrentList.ToList(); // Convert ConcurrentBag to List before returning
-    } 
+        return list;
+    }
     #endregion
 
     #region Async
@@ -86,30 +74,18 @@ public static class CollectionExtensions
         where TDocument : BaseEntity
         where TDbContext : MongoDbContext
     {
-        var concurrentList = new ConcurrentBag<TDocument>();
+        var list = new List<TDocument>();
 
         while (await cursor.MoveNextAsync(cancellationToken))
         {
             foreach (var item in cursor.Current)
             {
-                concurrentList.Add(item);
+                list.Add(SetReferences(item, includeReferences, dbContext)!);
             }
         }
 
-        if (includeReferences is not null && includeReferences.Any())
-        {
-            Parallel.ForEach(concurrentList, item =>
-            {
-                var processedItem = SetReferences(item, includeReferences, dbContext);
-                if (processedItem != null)
-                {
-                    concurrentList.Add(processedItem); // Thread-safe collection
-                }
-            });
-        }
-
-        return concurrentList.ToList(); // Convert ConcurrentBag to List before returning
-    } 
+        return list;
+    }
     #endregion
 
     #endregion

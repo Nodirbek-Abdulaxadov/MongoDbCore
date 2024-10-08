@@ -1,4 +1,8 @@
-﻿namespace MongoDbCore;
+﻿using MongoDB.Driver;
+using Newtonsoft.Json.Linq;
+using SharpCompress.Common;
+
+namespace MongoDbCore;
 
 public class Collection<T> where T : BaseEntity
 {
@@ -111,7 +115,7 @@ public class Collection<T> where T : BaseEntity
 
     public T Update(T entity)
     {
-        //entity.UpdatedAt = DateTime.Now;
+        entity.UpdatedAt = DateTime.Now;
         Source!.ReplaceOne(x => x.Id == entity.Id, entity);
         if (_isCacheable) UpdateCache();
         return entity;
@@ -119,11 +123,64 @@ public class Collection<T> where T : BaseEntity
 
     public async Task<T> UpdateAsync(T entity, CancellationToken cancellationToken = default)
     {
-        //entity.UpdatedAt = DateTime.Now;
+        entity.UpdatedAt = DateTime.Now;
         var replaceOptions = new ReplaceOptions();
         await Source!.ReplaceOneAsync(x => x.Id == entity.Id, entity, replaceOptions, cancellationToken);
         if (_isCacheable) UpdateCache();
         return entity;
+    }
+
+    public long UpdateMany<TProperty>(Expression<Func<T, bool>> filter,
+                                      Expression<Func<T, TProperty>> propertySelection, 
+                                      TProperty newValue)
+    {
+        if (Source is null)
+            throw new InvalidOperationException("The data source is not initialized.");
+
+        if (filter is null)
+            throw new ArgumentNullException(nameof(filter));
+
+        if (propertySelection is null)
+            throw new ArgumentNullException(nameof(propertySelection));
+
+        try
+        {
+            var update = Builders<T>.Update.Set(propertySelection, newValue).Set(t => t.UpdatedAt, DateTime.Now);
+            var result = Source.UpdateMany(filter, update);
+
+            return result.ModifiedCount;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("An error occurred while updating documents.", ex);
+        }
+    }
+
+    public async Task<long> UpdateManyAsync<TProperty>(Expression<Func<T, bool>> filter,
+                                             Expression<Func<T, TProperty>> propertySelection,
+                                             TProperty newValue,
+                                             CancellationToken cancellationToken = default)
+    {
+        if (Source is null)
+            throw new InvalidOperationException("The data source is not initialized.");
+
+        if (filter is null)
+            throw new ArgumentNullException(nameof(filter));
+
+        if (propertySelection is null)
+            throw new ArgumentNullException(nameof(propertySelection));
+
+        try
+        {
+            var update = Builders<T>.Update.Set(propertySelection, newValue);
+            var result = await Source.UpdateManyAsync(filter, update, null, cancellationToken);
+
+            return result.ModifiedCount;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("An error occurred while updating documents asynchronously.", ex);
+        }
     }
 
     public void Delete(string id)
@@ -157,6 +214,12 @@ public class Collection<T> where T : BaseEntity
         await Source!.DeleteManyAsync(Builders<T>.Filter.In(x => x.Id, ids), cancellationToken);
         if (_isCacheable) UpdateCache();
     }
+
+    public void DeleteMany(Expression<Func<T, bool>> filter)
+        => Source!.DeleteMany(filter);
+
+    public async Task DeleteManyAsync(Expression<Func<T, bool>> filter, CancellationToken cancellationToken = default)
+        => await Source!.DeleteManyAsync(filter, cancellationToken);
 
     public void DeleteAll()
     {
