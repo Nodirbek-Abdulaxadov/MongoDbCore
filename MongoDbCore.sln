@@ -3,11 +3,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.11.34929.205
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MongoDbCore", "MongoDbCore\MongoDbCore.csproj", "{DCCBF206-BEFF-4A24-886C-6B05E5A8FF8F}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{88B6BEC6-B828-4184-BCB2-29CE6B77E732}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebApplication1", "BooksAPI\WebApplication1.csproj", "{A7341002-E40E-472E-97E2-69EF3EC184FF}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "dev", "dev", "{AF5CF8CD-F756-4687-92C4-4AFF52E05002}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestingPerfomance", "TestingPerfomance\TestingPerfomance.csproj", "{0E7F1E32-C8FA-445C-9F7B-2CD012DF2571}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MongoDbCore", "src\MongoDbCore\MongoDbCore.csproj", "{D81FECA1-5C29-4BF8-B6D4-E451BA852B05}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebApplication1", "dev\BooksAPI\WebApplication1.csproj", "{8ECFBA67-37B8-434D-B15E-953619544D93}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestingPerfomance", "dev\TestingPerfomance\TestingPerfomance.csproj", "{96D0FCFA-D843-44A3-85D6-69C1EB22CA51}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,21 +19,26 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{DCCBF206-BEFF-4A24-886C-6B05E5A8FF8F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DCCBF206-BEFF-4A24-886C-6B05E5A8FF8F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DCCBF206-BEFF-4A24-886C-6B05E5A8FF8F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DCCBF206-BEFF-4A24-886C-6B05E5A8FF8F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A7341002-E40E-472E-97E2-69EF3EC184FF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A7341002-E40E-472E-97E2-69EF3EC184FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A7341002-E40E-472E-97E2-69EF3EC184FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A7341002-E40E-472E-97E2-69EF3EC184FF}.Release|Any CPU.Build.0 = Release|Any CPU
-		{0E7F1E32-C8FA-445C-9F7B-2CD012DF2571}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{0E7F1E32-C8FA-445C-9F7B-2CD012DF2571}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{0E7F1E32-C8FA-445C-9F7B-2CD012DF2571}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{0E7F1E32-C8FA-445C-9F7B-2CD012DF2571}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D81FECA1-5C29-4BF8-B6D4-E451BA852B05}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D81FECA1-5C29-4BF8-B6D4-E451BA852B05}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D81FECA1-5C29-4BF8-B6D4-E451BA852B05}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D81FECA1-5C29-4BF8-B6D4-E451BA852B05}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8ECFBA67-37B8-434D-B15E-953619544D93}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8ECFBA67-37B8-434D-B15E-953619544D93}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8ECFBA67-37B8-434D-B15E-953619544D93}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8ECFBA67-37B8-434D-B15E-953619544D93}.Release|Any CPU.Build.0 = Release|Any CPU
+		{96D0FCFA-D843-44A3-85D6-69C1EB22CA51}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{96D0FCFA-D843-44A3-85D6-69C1EB22CA51}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{96D0FCFA-D843-44A3-85D6-69C1EB22CA51}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{96D0FCFA-D843-44A3-85D6-69C1EB22CA51}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D81FECA1-5C29-4BF8-B6D4-E451BA852B05} = {88B6BEC6-B828-4184-BCB2-29CE6B77E732}
+		{8ECFBA67-37B8-434D-B15E-953619544D93} = {AF5CF8CD-F756-4687-92C4-4AFF52E05002}
+		{96D0FCFA-D843-44A3-85D6-69C1EB22CA51} = {AF5CF8CD-F756-4687-92C4-4AFF52E05002}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0CC45C93-ED40-4E46-ABF4-413EBC158C14}
