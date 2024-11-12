@@ -5,7 +5,7 @@ Define MongoDB Connection: Set up your MongoDB connection string in the applicat
 "MongoDB": {
     //custom connection with username, password, host, port
     //"Connection": "mongodb://replace_username:replace_password@replace_hostname:replace_post"
-    "Connection": "mongodb://localhost:27072",
+    "Connection": "mongodb://localhost:27017",
     "Database": "database_name", 
     //optional
     "MaxConnectionPoolSize": 100 
