@@ -1,7 +1,7 @@
 import React from 'react';
 import Layout from '@theme/Layout';
 
-export default function Querying() {
+export default function Bulk() {
   return (
     <Layout>
       <h1>My React page</h1>

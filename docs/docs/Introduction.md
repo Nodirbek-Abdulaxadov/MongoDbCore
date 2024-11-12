@@ -10,4 +10,4 @@ Key Features
  * **Easy Setup**: Simple configuration for MongoDB connections.
  * **CRUD Operations**: Supports Create, Read, Update, and Delete.
  * **Asynchronous Support**: Perform operations asynchronously for better performance.
- * **Performance Optimizations**: Optimized for speed and memory efficiency.
+ * **Bulk Operations**: Enables efficient handling of large data sets by performing multiple operations in a single request.

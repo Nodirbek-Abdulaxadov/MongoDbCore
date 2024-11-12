@@ -1,7 +1,7 @@
 import React from 'react';
 import Layout from '@theme/Layout';
 
-export default function BasicUsage() {
+export default function Filtering() {
   return (
     <Layout>
       <h1>My React page</h1>

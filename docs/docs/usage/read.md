@@ -4,4 +4,14 @@ sidebar_position: 3
 
 # Read
 
-This is a Markdown page
+Read todos all
+
+```csharp
+
+    public IEnumerable<Todo> GetAll()
+        => dbContext.Todos.ToList();
+
+    public async Task<IEnumerable<Todo>> GetAllAsync()
+        => await dbContext.Todos.ToListAsync();
+    
+```
