@@ -11,6 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\MongoDbCore.Identity\MongoDbCore.Identity.csproj" />
     <ProjectReference Include="..\..\src\MongoDbCore\MongoDbCore.csproj" />
   </ItemGroup>
 

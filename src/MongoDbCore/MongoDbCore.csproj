@@ -17,7 +17,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="GFz_P-5e_400x400.png" />
+    <Resource Include="GFz_P-5e_400x400.png" />
   </ItemGroup>
 
   <ItemGroup>
