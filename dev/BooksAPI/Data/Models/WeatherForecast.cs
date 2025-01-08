@@ -10,6 +10,14 @@ public class WeatherForecast : BaseEntity
     public int TemperatureC { get; set; }
     public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
     public string? Summary { get; set; }
+
+    public static WeatherForecast Random()
+        => new()
+        {
+            Datetime = DateTime.Now,
+            TemperatureC = 32,
+            Summary = Guid.NewGuid().ToString()
+        };
 }
 
 public class CreateWeatherForecast

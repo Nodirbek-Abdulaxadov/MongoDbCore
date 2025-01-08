@@ -3,6 +3,7 @@
 public class AppDbContext : MongoDbContext
 {
     public Collection<WeatherForecast> WeatherForecasts { get; set; } = null!;
+    public Collection<WeatherForecast> WeatherForecasts2 { get; set; } = null!;
 
     protected override async Task OnInitializedAsync()
     {
@@ -21,6 +22,7 @@ public class AppDbContext : MongoDbContext
             .ToArray();
 
             await WeatherForecasts.AddRangeAsync(mockData);
+            await WeatherForecasts2.AddRangeAsync(mockData);
         }
     }
 }

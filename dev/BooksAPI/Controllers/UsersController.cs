@@ -28,7 +28,7 @@ public class UsersController(IRoleManager roleManager) : ControllerBase
         return Ok();
     }
 
-    [HttpPost]
+    [HttpDelete]
     public async Task<IActionResult> Delete([FromBody] string id)
     {
         var role = await roleManager.FindByIdAsync(id);

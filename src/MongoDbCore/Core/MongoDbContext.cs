@@ -27,6 +27,13 @@ public abstract class MongoDbContext
         return _database.GetCollection<T>(name);
     }
 
+    public IMongoCollection<T> GetCollection<T>()
+        where T : BaseEntity
+    {
+        var collectionName = typeof(T).GetCollectionName<T>();
+        return _database.GetCollection<T>(collectionName);
+    }
+
     public static IMongoCollection<T> GetStaticCollection<T>(string name)
     {
         return _staticDatabase!.GetCollection<T>(name);

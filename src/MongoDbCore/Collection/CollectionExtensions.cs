@@ -346,6 +346,9 @@ public static class CollectionExtensions
     }
     #endregion
 
+    public static string GetCollectionName<TEntity>(this Type entity) where TEntity : BaseEntity
+        => typeof(TEntity).Name.Pluralize().Underscore();
+
     #region Helpers
     internal static PropertyInfo ExtractProperty<T, TProperty>(Expression<Func<T, TProperty>> propertyExpression)
     {

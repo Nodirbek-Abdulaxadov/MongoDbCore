@@ -1,5 +1,4 @@
-using WebApplication1.Data.Models;
-using MongoDbCore.Identity.External;
+using MongoDbCore.Booster;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,10 +11,10 @@ builder.Services.AddSwaggerGen();
 
 var config = builder.Configuration.GetSection("MongoDB").Get<MongoDbCoreOptions>();
 
-//builder.Services.AddMongoDbContext<AppDbContext>(config);
+builder.Services.AddMongoDbContext<AppDbContext>(config);
 
 // its current config
-builder.Services.AddMongoDbIdentity<UsersDbContext, User>(config);
+//builder.Services.AddMongoDbIdentity<UsersDbContext, User>(config);
 
 var app = builder.Build();
 
