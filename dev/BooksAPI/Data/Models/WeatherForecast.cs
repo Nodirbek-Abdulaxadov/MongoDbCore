@@ -2,7 +2,6 @@ using MongoDbCore.Helpers;
 
 namespace WebApplication1.Data;
 
-[Cacheable]
 public class WeatherForecast : BaseEntity
 {
     public DateOnly Date { get; set; }
@@ -12,6 +11,23 @@ public class WeatherForecast : BaseEntity
     public string? Summary { get; set; }
 
     public static WeatherForecast Random()
+        => new()
+        {
+            Datetime = DateTime.Now,
+            TemperatureC = 32,
+            Summary = Guid.NewGuid().ToString()
+        };
+}
+
+public class WeatherForecast2 : BaseEntity
+{
+    public DateOnly Date { get; set; }
+    public Datetime Datetime { get; set; } = DateTime.Now;
+    public int TemperatureC { get; set; }
+    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+    public string? Summary { get; set; }
+
+    public static WeatherForecast2 Random()
         => new()
         {
             Datetime = DateTime.Now,

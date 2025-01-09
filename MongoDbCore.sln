@@ -17,8 +17,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TodoAPI", "dev\TodoAPI\Todo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MongoDbCore.Identity", "MongoDbCore.Identity\MongoDbCore.Identity.csproj", "{3FB83D5B-0EEC-426A-800D-68167EA5EC39}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MongoDbCore.Booster", "MongoDbCore.Booster\MongoDbCore.Booster.csproj", "{5ABFF1C1-529A-4ECA-996E-75055062AB3A}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,10 +43,6 @@ Global
 		{3FB83D5B-0EEC-426A-800D-68167EA5EC39}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3FB83D5B-0EEC-426A-800D-68167EA5EC39}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3FB83D5B-0EEC-426A-800D-68167EA5EC39}.Release|Any CPU.Build.0 = Release|Any CPU
-		{5ABFF1C1-529A-4ECA-996E-75055062AB3A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{5ABFF1C1-529A-4ECA-996E-75055062AB3A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{5ABFF1C1-529A-4ECA-996E-75055062AB3A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{5ABFF1C1-529A-4ECA-996E-75055062AB3A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -59,7 +53,6 @@ Global
 		{96D0FCFA-D843-44A3-85D6-69C1EB22CA51} = {AF5CF8CD-F756-4687-92C4-4AFF52E05002}
 		{5DBA30DF-ABF6-4373-AC1D-B5E33597F4BD} = {AF5CF8CD-F756-4687-92C4-4AFF52E05002}
 		{3FB83D5B-0EEC-426A-800D-68167EA5EC39} = {88B6BEC6-B828-4184-BCB2-29CE6B77E732}
-		{5ABFF1C1-529A-4ECA-996E-75055062AB3A} = {88B6BEC6-B828-4184-BCB2-29CE6B77E732}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0CC45C93-ED40-4E46-ABF4-413EBC158C14}

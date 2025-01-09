@@ -1,5 +1,4 @@
-﻿using MongoDbCore.Booster;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 
 namespace WebApplication1.Controllers;
 
@@ -7,27 +6,24 @@ namespace WebApplication1.Controllers;
 [Route("[controller]")]
 public class WeatherForecastController2 : ControllerBase
 {
-    private readonly Booster<AppDbContext, WeatherForecast> _booster;
     private readonly AppDbContext dbContext;
     public WeatherForecastController2(AppDbContext dbContext)
     {
-        _booster = new();
         this.dbContext = dbContext;
-        _booster.Initialize(dbContext);
     }
 
     [HttpGet]
     public IActionResult Get()
     {
-        var list = _booster.GetAll();
+        var list = dbContext.WeatherForecastsCached.ToList();
         return Ok(list);
     }
 
     [HttpGet("test")]
     public async Task<IActionResult> Test()
     {
-        int threadCount = 1000;
-        int operationsPerThread = 1; // Total operations = threadCount * operationsPerThread
+        int threadCount = 100;
+        int operationsPerThread = 10; // Total operations = threadCount * operationsPerThread
 
         async Task<string> RunBoosterOperationsAsync()
         {
@@ -37,13 +33,13 @@ public class WeatherForecastController2 : ControllerBase
             {
                 for (int i = 0; i < operationsPerThread; i++)
                 {
-                    var model = _booster.Add(WeatherForecast.Random());
-                    var all = _booster.GetAll();
+                    var model = dbContext.WeatherForecastsCached.Add(WeatherForecast2.Random());
+                    var all = dbContext.WeatherForecastsCached.ToList();
                     model.Summary = Guid.NewGuid().ToString();
                     model.TemperatureC = 23;
-                    model = _booster.Update(model);
-                    model = _booster.Get(model.Id);
-                    all = _booster.GetAll();
+                    model = dbContext.WeatherForecastsCached.Update(model);
+                    model = dbContext.WeatherForecastsCached.FirstOrDefault(x => x.Id == model.Id);
+                    all = dbContext.WeatherForecastsCached.ToList();
                 }
             });
 
@@ -51,7 +47,7 @@ public class WeatherForecastController2 : ControllerBase
             stopwatch.Stop();
 
             return $"""
-        Booster Operations:
+        Cached Operations:
         -------------------
         Elapsed time (ms): {stopwatch.Elapsed.TotalMilliseconds}
         Elapsed time (s): {stopwatch.Elapsed.TotalSeconds}
@@ -105,6 +101,27 @@ public class WeatherForecastController2 : ControllerBase
     """;
 
         return Ok(result);
+
+
+        /*
+         * 
+         * after test 11250 records on db results:
+         
+        Performance Test Results:
+        =========================
+        Cached Operations:
+        -------------------
+        Elapsed time (ms): 21207.7009
+        Elapsed time (s): 21.2077009
+        -------------------
+
+        DbContext Operations:
+        ---------------------
+        Elapsed time (ms): 150717.4013
+        Elapsed time (s): 150.7174013
+        ---------------------
+
+         **/
     }
 
 }

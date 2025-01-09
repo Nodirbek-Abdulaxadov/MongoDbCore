@@ -42,6 +42,19 @@ public static class MongoDbCoreExtensions
                     // Set the collection instance to the property
                     property.SetValue(dbContext, collectionInstance);
                 }
+
+                // Check if the property type is a generic collection
+                if (property.PropertyType.IsGenericType && property.PropertyType.GetGenericTypeDefinition() == typeof(SelfCachedCollection<>))
+                {
+                    // Get the generic type argument of the collection
+                    var entityType = property.PropertyType.GetGenericArguments()[0];
+
+                    // Create an instance of Collection<TEntity> with the entity type and database instance
+                    var collectionInstance = Activator.CreateInstance(typeof(SelfCachedCollection<>).MakeGenericType(entityType), dbContext);
+
+                    // Set the collection instance to the property
+                    property.SetValue(dbContext, collectionInstance);
+                }
             }
             dbContext!.Initialize();
             StaticServiceLocator.DbContext = dbContext;

@@ -1,8 +1,4 @@
-﻿using MongoDB.Driver;
-using Newtonsoft.Json.Linq;
-using SharpCompress.Common;
-
-namespace MongoDbCore;
+﻿namespace MongoDbCore;
 
 public class Collection<T> where T : BaseEntity
 {
