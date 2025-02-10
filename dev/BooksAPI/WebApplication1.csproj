@@ -1,18 +1,30 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net9.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
 
-  <ItemGroup>
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
-  </ItemGroup>
+		<ServerGarbageCollection>true</ServerGarbageCollection>
+		<ServerGarbageCollectionConcurrent>true</ServerGarbageCollectionConcurrent>
+		<GCHeapCount>12</GCHeapCount>
+		<GCRetainVM>false</GCRetainVM>
+		<GCHeapHardLimitPercent>75</GCHeapHardLimitPercent>
+		<GCLargePages>true</GCLargePages>
+		<GCLargeObjectHeapCompactionMode>1</GCLargeObjectHeapCompactionMode>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\MongoDbCore.Identity\MongoDbCore.Identity.csproj" />
-    <ProjectReference Include="..\..\src\MongoDbCore\MongoDbCore.csproj" />
-  </ItemGroup>
+
+
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="LazyData_Alfa_0_0_1" Version="0.0.2" />
+		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\MongoDbCore.Identity\MongoDbCore.Identity.csproj" />
+		<ProjectReference Include="..\..\src\MongoDbCore\MongoDbCore.csproj" />
+	</ItemGroup>
 
 </Project>

@@ -9,17 +9,17 @@ public class SelfCachedCollection<T> where T : BaseEntity
 {
     #region Initialize
 
-    internal readonly IMongoCollection<T>? Source;
+    public readonly IMongoCollection<T>? Source;
     private List<T> _cache = [];
-    private readonly object _lock = new();
+    private List<T> _temp = [];
+    private bool _writeInProccess = false;
+
+    public string CollectionName => typeof(T).Name.Pluralize().Underscore();
 
     public SelfCachedCollection(MongoDbContext dbContext)
     {
-        Source = dbContext.GetCollection<T>(typeof(T).Name.Pluralize().Underscore());
-        lock (_lock)
-        {
-            _cache = ToList();
-        }
+        Source = dbContext.GetCollection<T>(CollectionName);
+        _cache = ToList();
     }
 
     #endregion
@@ -28,133 +28,169 @@ public class SelfCachedCollection<T> where T : BaseEntity
 
     public List<T> ToList()
     {
-        lock (_lock)
+        if (_writeInProccess)
         {
-            return _cache;
+            return _temp;
         }
+
+        return _cache;
     }
 
     public Task<List<T>> ToListAsync(CancellationToken cancellationToken = default)
     {
-        lock (_lock)
+        // Check if the cancellation has already been requested
+        if (cancellationToken.IsCancellationRequested)
         {
-            // Check if the cancellation has already been requested
-            if (cancellationToken.IsCancellationRequested)
-            {
-                // Throw a TaskCanceledException to indicate the operation was canceled
-                return Task.FromCanceled<List<T>>(cancellationToken);
-            }
-
-            // Simulate async work and return the list
-            return Task.FromResult(_cache);
+            // Throw a TaskCanceledException to indicate the operation was canceled
+            return Task.FromCanceled<List<T>>(cancellationToken);
         }
+
+        if (_writeInProccess)
+        {
+            return Task.FromResult(_temp);
+        }
+
+        return Task.FromResult(_cache);
     }
 
     public T? FirstOrDefault()
     {
-        lock (_lock)
+        if (_writeInProccess)
         {
-            return _cache.FirstOrDefault();
+            return _temp.FirstOrDefault();
         }
+
+        return _cache.FirstOrDefault();
     }
 
     public T? FirstOrDefault(Expression<Func<T, bool>> predicate)
     {
-        lock (_lock)
+        if (_temp.Count == 0 || predicate is null)
         {
-            if (_cache.Count == 0)
-            {
-                return null;
-            }
-
-            return _cache.First();
+            return null;
         }
+        var compiledPredicate = predicate.Compile();
+
+        if (_writeInProccess)
+        {
+            return _temp.FirstOrDefault(compiledPredicate);
+        }
+
+        return _cache.Where(item => item != null).FirstOrDefault(compiledPredicate);
+    }
+
+    public List<T> Where(Expression<Func<T, bool>> predicate)
+    {
+        var compiledPredicate = predicate.Compile();
+        if (_writeInProccess)
+        {
+            return _temp.Where(compiledPredicate).ToList();
+        }
+        
+        return _cache.Where(compiledPredicate).ToList();
     }
 
     public Task<T>? FirstOrDefaultAsync(CancellationToken cancellationToken = default)
     {
-        lock (_lock)
+        // Check if the cancellation has already been requested
+        if (cancellationToken.IsCancellationRequested)
         {
-            // Check if the cancellation has already been requested
-            if (cancellationToken.IsCancellationRequested)
-            {
-                // Throw a TaskCanceledException to indicate the operation was canceled
-                return Task.FromCanceled<T>(cancellationToken);
-            }
-
-            // Simulate async work and return the list
-            if (_cache.Count == 0)
-            {
-                return null;
-            }
-
-            return Task.FromResult(_cache.First());
+            // Throw a TaskCanceledException to indicate the operation was canceled
+            return Task.FromCanceled<T>(cancellationToken);
         }
+
+        // Simulate async work and return the list
+        if (_temp.Count == 0)
+        {
+            return null;
+        }
+
+        if (_writeInProccess)
+        {
+            return Task.FromResult(_temp.First());
+        }
+
+        return Task.FromResult(_cache.First());
     }
 
     public Task<T>? FirstOrDefaultAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
     {
-        lock (_lock)
+        // Check if the cancellation has already been requested
+        if (cancellationToken.IsCancellationRequested)
         {
-            // Check if the cancellation has already been requested
-            if (cancellationToken.IsCancellationRequested)
-            {
-                // Throw a TaskCanceledException to indicate the operation was canceled
-                return Task.FromCanceled<T>(cancellationToken);
-            }
-
-            // Simulate async work and return the list
-            if (_cache.Count == 0)
-            {
-                return null;
-            }
-
-            var compiledPredicate = predicate.Compile();
-            return Task.FromResult(_cache.Where(compiledPredicate).First());
+            // Throw a TaskCanceledException to indicate the operation was canceled
+            return Task.FromCanceled<T>(cancellationToken);
         }
+
+        // Simulate async work and return the list
+        if (_temp.Count == 0)
+        {
+            return null;
+        }
+
+        var compiledPredicate = predicate.Compile();
+
+        if (_writeInProccess)
+        {
+            return Task.FromResult(_temp.Where(compiledPredicate).First());
+        }
+
+        return Task.FromResult(_cache.Where(compiledPredicate).First());
     }
 
     public bool Any()
     {
-        lock (_lock)
+        if (_writeInProccess)
         {
-            return _cache.Count > 0;
+            return _temp.Count > 0;
         }
+
+        return _temp.Count > 0;
     }
 
     public bool Any(Expression<Func<T, bool>> predicate)
     {
-        lock (_lock)
+        var compiledPredicate = predicate.Compile();
+
+        if (_writeInProccess)
         {
-            var compiledPredicate = predicate.Compile();
-            return _cache.Where(compiledPredicate).Any();
+            return _temp.Any(compiledPredicate);
         }
+
+        return _cache.Where(compiledPredicate).Any();
     }
 
     public List<TResult> Select<TResult>(Expression<Func<T, TResult>> selector)
     {
-        lock ( _lock)
+        var compiledSelector = selector.Compile();
+
+        if (_writeInProccess)
         {
-            var compiledSelector = selector.Compile();
-            return _cache.Select(compiledSelector).ToList();
+            return _temp.Select(compiledSelector).ToList();
         }
+
+        return _cache.Select(compiledSelector).ToList();
     }
 
     public List<TResult> SelectMany<TResult>(Expression<Func<T, IEnumerable<TResult>>> selector)
     {
-        lock (_lock)
+        var compiledSelector = selector.Compile();
+
+        if (_writeInProccess)
         {
-            var compiledSelector = selector.Compile();
-            return _cache.SelectMany(compiledSelector).ToList();
+            return _temp.SelectMany(compiledSelector).ToList();
         }
+
+        return _cache.SelectMany(compiledSelector).ToList();
     }
 
     public long Count()
     {
-        lock (_lock)
+        if (_writeInProccess)
         {
-            return _cache.Count;
+            return _temp.Count;
         }
+        return _temp.Count;
     }
 
     #endregion
@@ -163,103 +199,76 @@ public class SelfCachedCollection<T> where T : BaseEntity
 
     public T Add(T entity)
     {
-        lock(_lock)
+        if (string.IsNullOrEmpty(entity.Id))
         {
-            if (string.IsNullOrEmpty(entity.Id))
-            {
-                entity.Id = BaseEntity.NewId;
-            }
-            Source!.InsertOne(entity);
-            _cache.Add(entity);
-            return entity;
+            entity.Id = BaseEntity.NewId;
         }
+        Source!.InsertOne(entity);
+        ReloadCache();
+        return entity;
     }
 
     public Task<T> AddAsync(T entity, CancellationToken cancellationToken = default)
     {
-        lock (_lock)
+        if (cancellationToken.IsCancellationRequested)
         {
-            if (cancellationToken.IsCancellationRequested)
-            {
-                // Throw a TaskCanceledException to indicate the operation was canceled
-                return Task.FromCanceled<T>(cancellationToken);
-            }
-
-            if (string.IsNullOrEmpty(entity.Id))
-            {
-                entity.Id = BaseEntity.NewId;
-            }
-
-            Source!.InsertOne(entity);
-            _cache.Add(entity);
-            return Task.FromResult(entity);
+            // Throw a TaskCanceledException to indicate the operation was canceled
+            return Task.FromCanceled<T>(cancellationToken);
         }
+
+        if (string.IsNullOrEmpty(entity.Id))
+        {
+            entity.Id = BaseEntity.NewId;
+        }
+
+        Source!.InsertOne(entity);
+        ReloadCache();
+        return Task.FromResult(entity);
     }
 
     public IEnumerable<T> AddRange(IEnumerable<T> entities)
     {
-        lock (_lock)
-        {
-            Source!.InsertMany(entities);
-            _cache.AddRange(entities);
-            return entities;
-        }
+        Source!.InsertMany(entities);
+        ReloadCache();
+        return entities;
     }
 
     public Task<IEnumerable<T>> AddRangeAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
     {
-        lock (_lock)
+        if (cancellationToken.IsCancellationRequested)
         {
-            if (cancellationToken.IsCancellationRequested)
-            {
-                // Throw a TaskCanceledException to indicate the operation was canceled
-                return Task.FromCanceled<IEnumerable<T>>(cancellationToken);
-            }
-
-            Source!.InsertMany(entities);
-            _cache.AddRange(entities);
-            return Task.FromResult(entities);
+            // Throw a TaskCanceledException to indicate the operation was canceled
+            return Task.FromCanceled<IEnumerable<T>>(cancellationToken);
         }
+
+        Source!.InsertMany(entities);
+        ReloadCache();
+        return Task.FromResult(entities);
     }
 
     public T Update(T entity)
     {
-        lock (_lock)
-        {
-            Source!.ReplaceOne(x => x.Id == entity.Id, entity);
-            var index = _cache.FindIndex(x => x.Id == entity.Id);
-            if (index >= 0)
-            {
-                _cache[index] = entity;
-            }
-
-            return entity;
-        }
+        Source!.ReplaceOne(x => x.Id == entity.Id, entity);
+        ReloadCache();
+        return entity;
     }
 
     public Task<T> UpdateAsync(T entity, CancellationToken cancellationToken = default)
     {
-        lock (_lock)
+        if (cancellationToken.IsCancellationRequested)
         {
-            if (cancellationToken.IsCancellationRequested)
-            {
-                // Throw a TaskCanceledException to indicate the operation was canceled
-                return Task.FromCanceled<T>(cancellationToken);
-            }
-
-            if (string.IsNullOrEmpty(entity.Id))
-            {
-                entity.Id = BaseEntity.NewId;
-            }
-
-            Source!.ReplaceOne(x => x.Id == entity.Id, entity);
-            var index = _cache.FindIndex(x => x.Id == entity.Id);
-            if (index >= 0)
-            {
-                _cache[index] = entity;
-            }
-            return Task.FromResult(entity);
+            // Throw a TaskCanceledException to indicate the operation was canceled
+            return Task.FromCanceled<T>(cancellationToken);
         }
+
+        if (string.IsNullOrEmpty(entity.Id))
+        {
+            entity.Id = BaseEntity.NewId;
+        }
+
+        Source!.ReplaceOne(x => x.Id == entity.Id, entity);
+        ReloadCache();
+        return Task.FromResult(entity);
     }
 
     public long UpdateMany<TProperty>(Expression<Func<T, bool>> filter,
@@ -275,37 +284,35 @@ public class SelfCachedCollection<T> where T : BaseEntity
         if (propertySelection is null)
             throw new ArgumentNullException(nameof(propertySelection));
 
-        lock (_lock)
+        try
         {
-            try
-            {
-                // Update in the source collection
-                var update = Builders<T>.Update
-                    .Set(propertySelection, newValue)
-                    .Set(t => t.UpdatedAt, DateTime.Now);
-                var result = Source.UpdateMany(filter, update);
+            // Update in the source collection
+            var update = Builders<T>.Update
+                .Set(propertySelection, newValue)
+                .Set(t => t.UpdatedAt, DateTime.Now);
+            var result = Source.UpdateMany(filter, update);
 
-                if (result.ModifiedCount > 0)
+            if (result.ModifiedCount > 0)
+            {
+                // Compile the filter into a predicate to update the in-memory list
+                var compiledFilter = filter.Compile();
+                foreach (var item in _cache.Where(compiledFilter))
                 {
-                    // Compile the filter into a predicate to update the in-memory list
-                    var compiledFilter = filter.Compile();
-                    foreach (var item in _cache.Where(compiledFilter))
+                    var propertyInfo = ((MemberExpression)propertySelection.Body).Member as PropertyInfo;
+                    if (propertyInfo != null)
                     {
-                        var propertyInfo = ((MemberExpression)propertySelection.Body).Member as PropertyInfo;
-                        if (propertyInfo != null)
-                        {
-                            propertyInfo.SetValue(item, newValue);
-                            item.UpdatedAt = DateTime.Now; // Assuming UpdatedAt exists in the type
-                        }
+                        propertyInfo.SetValue(item, newValue);
+                        item.UpdatedAt = DateTime.Now; // Assuming UpdatedAt exists in the type
                     }
                 }
+            }
+            ReloadCache();
 
-                return result.ModifiedCount;
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("An error occurred while updating documents.", ex);
-            }
+            return result.ModifiedCount;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("An error occurred while updating documents.", ex);
         }
     }
 
@@ -323,115 +330,105 @@ public class SelfCachedCollection<T> where T : BaseEntity
         if (propertySelection is null)
             throw new ArgumentNullException(nameof(propertySelection));
 
-        // Lock for thread-safe access to the in-memory list
-        lock (_lock)
+        // Compile the filter into a predicate to update the in-memory list later
+        var compiledFilter = filter.Compile();
+
+        try
         {
-            // Compile the filter into a predicate to update the in-memory list later
-            var compiledFilter = filter.Compile();
+            // Create the update definition
+            var update = Builders<T>.Update
+                .Set(propertySelection, newValue)
+                .Set(t => t.UpdatedAt, DateTime.Now);
 
-            try
+            // Update the source collection asynchronously
+            var result = Source.UpdateMany(filter, update, null, cancellationToken);
+
+            if (result.ModifiedCount > 0)
             {
-                // Create the update definition
-                var update = Builders<T>.Update
-                    .Set(propertySelection, newValue)
-                    .Set(t => t.UpdatedAt, DateTime.Now);
-
-                // Update the source collection asynchronously
-                var result =  Source.UpdateMany(filter, update, null, cancellationToken);
-
-                if (result.ModifiedCount > 0)
+                // Update matching entities in the in-memory list
+                foreach (var item in _cache.Where(compiledFilter))
                 {
-                    // Update matching entities in the in-memory list
-                    foreach (var item in _cache.Where(compiledFilter))
+                    var propertyInfo = ((MemberExpression)propertySelection.Body).Member as PropertyInfo;
+                    if (propertyInfo != null)
                     {
-                        var propertyInfo = ((MemberExpression)propertySelection.Body).Member as PropertyInfo;
-                        if (propertyInfo != null)
-                        {
-                            propertyInfo.SetValue(item, newValue);
-                            item.UpdatedAt = DateTime.Now; // Assuming UpdatedAt exists in the type
-                        }
+                        propertyInfo.SetValue(item, newValue);
+                        item.UpdatedAt = DateTime.Now; // Assuming UpdatedAt exists in the type
                     }
                 }
+            }
+            ReloadCache();
 
-                return Task.FromResult(result.ModifiedCount);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("An error occurred while updating documents asynchronously.", ex);
-            }
+            return Task.FromResult(result.ModifiedCount);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("An error occurred while updating documents asynchronously.", ex);
         }
     }
 
 
     public void Delete(string id)
     {
-        lock (_lock)
+        var item = _cache.FirstOrDefault(x => x.Id == id);
+        if (item != null)
         {
-            var item = _cache.Find(x => x.Id == id);
-            if (item != null)
-            {
-                Source!.DeleteOne(x => x.Id == id);
-                _cache.Remove(item);
-            }
+            Source!.DeleteOne(x => x.Id == id);
+            ReloadCache();
         }
     }
 
     public Task DeleteAsync(string id, CancellationToken cancellationToken = default)
     {
-        lock (_lock)
+        if (!cancellationToken.IsCancellationRequested)
         {
-            if (!cancellationToken.IsCancellationRequested)
+            var item = _cache.FirstOrDefault(x => x.Id == id);
+            if (item != null)
             {
-                var item = _cache.Find(x => x.Id == id);
-                if (item != null)
-                {
-                    Source!.DeleteOne(x => x.Id == id);
-                    _cache.Remove(item);
-                }
+                Source!.DeleteOne(x => x.Id == id);
+                ReloadCache();
             }
-
-            return Task.CompletedTask;
         }
+
+        return Task.CompletedTask;
     }
 
     public void Delete(T entity)
     {
-        lock (_lock)
+        var item = FirstOrDefault(x => x.Id == entity.Id);
+        if (item is not null)
         {
-            var item = FirstOrDefault(x => x.Id == entity.Id);
-            if (item is not null)
-            {
-                Source!.DeleteOne(x => x.Id == entity.Id);
-                _cache.Remove(item);
-            }
+            Source!.DeleteOne(x => x.Id == entity.Id);
+            ReloadCache();
         }
     }
 
     public Task DeleteAsync(T entity, CancellationToken cancellationToken = default)
     {
-        lock (_lock)
+        if (!cancellationToken.IsCancellationRequested)
         {
-            if (!cancellationToken.IsCancellationRequested)
+            var item = _cache.FirstOrDefault(x => x.Id == entity.Id);
+            if (item != null)
             {
-                var item = _cache.FirstOrDefault(x => x.Id == entity.Id);
-                if (item != null)
-                {
-                    Source!.DeleteOne(x => x.Id == item.Id);
-                    _cache.Remove(item);
-                }
+                Source!.DeleteOne(x => x.Id == item.Id);
+                ReloadCache();
             }
-
-            return Task.CompletedTask;
         }
+
+        return Task.CompletedTask;
     }
 
     public void ReloadCache()
     {
-        lock (_lock)
+        _writeInProccess = true;
+        Task.Run(() =>
         {
-            _cache.Clear();
             _cache = Source!.Find(FilterDefinition<T>.Empty).ToList();
-        }
+            lock (_temp)
+            {
+                _temp = _cache;
+            }
+        });
+        _writeInProccess = false;
     }
 
     #endregion

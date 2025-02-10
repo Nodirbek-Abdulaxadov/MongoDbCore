@@ -1,3 +1,5 @@
+using System.Runtime;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -28,5 +30,15 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+
+
+using var scope = app.Services.CreateScope();
+var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+GC.TryStartNoGCRegion(100_000_000);
+GC.EndNoGCRegion();
+GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
+GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+
 
 app.Run();

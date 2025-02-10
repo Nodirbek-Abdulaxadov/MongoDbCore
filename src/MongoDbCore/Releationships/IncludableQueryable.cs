@@ -106,7 +106,7 @@ public class IncludableQueryable<T, T2>(Collection<T> collection, List<IncludeRe
     }
     public IIncludableQueryable<T, TProperty> IncludeRef<TProperty>(Expression<Func<T, TProperty>> include)
     {
-        var property = CollectionExtensions.ExtractProperty(include);
+        var property = CollectionExtensions.ExtractProperty(include);   
 
         PropertyInfo? refProperty = null;
         string? refPropertyName = null;
@@ -114,7 +114,8 @@ public class IncludableQueryable<T, T2>(Collection<T> collection, List<IncludeRe
         foreach (var propertyInfo in properties)
         {
             var refAttribute = propertyInfo.GetCustomAttribute<ReferenceTo>();
-            if (refAttribute is not null && !string.IsNullOrEmpty(refAttribute.Entity))
+            if (refAttribute is not null && !string.IsNullOrEmpty(refAttribute.Entity) &&
+                refAttribute.Entity == property.PropertyType.Name)
             {
                 refProperty = propertyInfo;
                 refPropertyName = refAttribute.Entity;

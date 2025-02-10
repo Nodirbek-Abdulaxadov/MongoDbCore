@@ -4,7 +4,7 @@ public class Collection<T> where T : BaseEntity
 {
     #region Initialize
 
-    internal readonly IMongoCollection<T>? Source;
+    public readonly IMongoCollection<T>? Source;
     internal readonly MongoDbContext DbContext;
 
     private readonly bool _isCacheable;
@@ -38,7 +38,55 @@ public class Collection<T> where T : BaseEntity
         => Get().ToListAsync(cancellationToken);
 
     public T? FirstOrDefault()
-        => Get().FirstOrDefault(_includeReferences, DbContext);
+    {
+        if (_includeReferences.Any())
+        {
+            IAggregateFluent<BsonDocument> aggregate = DbContext.GetCollection<BsonDocument>(typeof(T).Name.Pluralize().Underscore()).Aggregate();
+
+            foreach (var reference in _includeReferences)
+            {
+                // Convert local field to ObjectId if necessary
+                aggregate = aggregate.AppendStage<BsonDocument>(new BsonDocument("$addFields", new BsonDocument
+                {
+                    {
+                        reference.EqualityProperty.Name,
+                        new BsonDocument("$toObjectId", $"${reference.EqualityProperty.Name}")
+                    }
+                }));
+
+                // Perform the $lookup
+                aggregate = aggregate.Lookup(
+                    foreignCollectionName: reference.Source?.CollectionName,
+                    localField: reference.EqualityProperty.Name,
+                    foreignField: "_id",
+                    @as: reference.Destination?.PropertyInfo?.Name);
+
+                // Unwind the result if necessary
+                aggregate = aggregate.Unwind(reference.Destination?.PropertyInfo?.Name, new AggregateUnwindOptions<BsonDocument>
+                {
+                    PreserveNullAndEmptyArrays = true
+                });
+
+                // Convert ObjectId back to string
+                aggregate = aggregate.AppendStage<BsonDocument>(new BsonDocument("$addFields", new BsonDocument
+                {
+                    { reference.EqualityProperty.Name, new BsonDocument("$toString", $"${reference.EqualityProperty.Name}") }
+                }));
+            }
+
+            var bsonResult = aggregate.FirstOrDefault();
+
+            if (bsonResult != null)
+            {
+                // Map the BsonDocument to the strongly-typed object T
+                return BsonSerializer.Deserialize<T>(bsonResult);
+            }
+
+            return default;
+        }
+
+        return Get().FirstOrDefault();
+    }
 
     public T? FirstOrDefault(Expression<Func<T, bool>> predicate)
         => Get(predicate).FirstOrDefault(_includeReferences, DbContext);
@@ -302,7 +350,8 @@ public class Collection<T> where T : BaseEntity
         foreach (var propertyInfo in properties)
         {
             var refAttribute = propertyInfo.GetCustomAttribute<ReferenceTo>();
-            if (refAttribute is not null && !string.IsNullOrEmpty(refAttribute.Entity))
+            if (refAttribute is not null && !string.IsNullOrEmpty(refAttribute.Entity) &&
+                refAttribute.Entity == property.PropertyType.Name)
             {
                 refProperty = propertyInfo;
                 refPropertyName = refAttribute.Entity;

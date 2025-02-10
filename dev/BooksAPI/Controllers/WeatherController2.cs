@@ -22,7 +22,7 @@ public class WeatherForecastController2 : ControllerBase
     [HttpGet("test")]
     public async Task<IActionResult> Test()
     {
-        int threadCount = 100;
+        int threadCount = 10;
         int operationsPerThread = 10; // Total operations = threadCount * operationsPerThread
 
         async Task<string> RunBoosterOperationsAsync()
@@ -35,6 +35,9 @@ public class WeatherForecastController2 : ControllerBase
                 {
                     var model = dbContext.WeatherForecastsCached.Add(WeatherForecast2.Random());
                     var all = dbContext.WeatherForecastsCached.ToList();
+                    var all1 = dbContext.WeatherForecastsCached.ToList();
+                    var all2 = dbContext.WeatherForecastsCached.ToList();
+                    var all3 = dbContext.WeatherForecastsCached.ToList();
                     model.Summary = Guid.NewGuid().ToString();
                     model.TemperatureC = 23;
                     model = dbContext.WeatherForecastsCached.Update(model);
@@ -65,6 +68,9 @@ public class WeatherForecastController2 : ControllerBase
                 {
                     var model = dbContext.WeatherForecasts.Add(WeatherForecast.Random());
                     var all = dbContext.WeatherForecasts.ToList();
+                    var all1 = dbContext.WeatherForecasts.ToList();
+                    var all2 = dbContext.WeatherForecasts.ToList();
+                    var all3 = dbContext.WeatherForecasts.ToList();
                     model.Summary = Guid.NewGuid().ToString();
                     model.TemperatureC = 23;
                     model = dbContext.WeatherForecasts.Update(model);
