@@ -21,4 +21,6 @@ public abstract class BaseEntity
     }
 
     public override int GetHashCode() => string.IsNullOrEmpty(Id) ? 0 : Id.GetHashCode();
+
+    public static string GenerateNewId() => ObjectId.GenerateNewId().ToString();
 }
