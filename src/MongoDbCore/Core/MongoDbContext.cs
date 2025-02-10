@@ -4,8 +4,8 @@ public abstract class MongoDbContext
 {
     private readonly MongoDbCoreOptions _options;
     private IMongoClient _client;
-    private IMongoDatabase _database;
     private static IMongoDatabase? _staticDatabase;
+    public readonly IMongoDatabase Database;
 
     public MongoDbContext() : this(new MongoDbCoreOptions()) { }
 
@@ -18,20 +18,20 @@ public abstract class MongoDbContext
 
         _client = new MongoClient(mongoClientSettings);
 
-        _database = _client.GetDatabase(_options.Database);
-        _staticDatabase = _database;
+        Database = _client.GetDatabase(_options.Database);
+        _staticDatabase = Database;
     }
 
     public IMongoCollection<T> GetCollection<T>(string name)
     {
-        return _database.GetCollection<T>(name);
+        return Database.GetCollection<T>(name);
     }
 
     public IMongoCollection<T> GetCollection<T>()
         where T : BaseEntity
     {
         var collectionName = typeof(T).GetCollectionName<T>();
-        return _database.GetCollection<T>(collectionName);
+        return Database.GetCollection<T>(collectionName);
     }
 
     public static IMongoCollection<T> GetStaticCollection<T>(string name)
@@ -41,12 +41,12 @@ public abstract class MongoDbContext
 
     public void DropCollection(string name)
     {
-        _database.DropCollection(name);
+        Database.DropCollection(name);
     }
 
     public async Task DropCollectionAsync(string name, CancellationToken cancellationToken = default)
     {
-        await _database.DropCollectionAsync(name, cancellationToken);
+        await Database.DropCollectionAsync(name, cancellationToken);
     }
 
     public void HealthCheckDB()

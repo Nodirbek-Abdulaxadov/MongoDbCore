@@ -1,11 +1,14 @@
-﻿namespace MongoDbCore;
+﻿using System.Diagnostics;
+
+namespace MongoDbCore;
 
 public class Collection<T> where T : BaseEntity
 {
     #region Initialize
 
-    public readonly IMongoCollection<T>? Source;
-    internal readonly MongoDbContext DbContext;
+    public readonly IMongoCollection<T> Source;
+    public readonly MongoDbContext DbContext;
+    public readonly string CollectionName = string.Empty;
 
     private readonly bool _isCacheable;
     private IFindFluent<T, T>? _cache;
@@ -14,8 +17,8 @@ public class Collection<T> where T : BaseEntity
     public Collection(MongoDbContext dbContext)
     {
         DbContext = dbContext;
-        Source = dbContext.GetCollection<T>(typeof(T).Name.Pluralize().Underscore());
-        _isCacheable = CheckCacheablityOfTEntity();
+        CollectionName = typeof(T).Name.Pluralize().Underscore();
+        Source = dbContext.GetCollection<T>(CollectionName);
     }
 
     #endregion
@@ -38,55 +41,7 @@ public class Collection<T> where T : BaseEntity
         => Get().ToListAsync(cancellationToken);
 
     public T? FirstOrDefault()
-    {
-        if (_includeReferences.Any())
-        {
-            IAggregateFluent<BsonDocument> aggregate = DbContext.GetCollection<BsonDocument>(typeof(T).Name.Pluralize().Underscore()).Aggregate();
-
-            foreach (var reference in _includeReferences)
-            {
-                // Convert local field to ObjectId if necessary
-                aggregate = aggregate.AppendStage<BsonDocument>(new BsonDocument("$addFields", new BsonDocument
-                {
-                    {
-                        reference.EqualityProperty.Name,
-                        new BsonDocument("$toObjectId", $"${reference.EqualityProperty.Name}")
-                    }
-                }));
-
-                // Perform the $lookup
-                aggregate = aggregate.Lookup(
-                    foreignCollectionName: reference.Source?.CollectionName,
-                    localField: reference.EqualityProperty.Name,
-                    foreignField: "_id",
-                    @as: reference.Destination?.PropertyInfo?.Name);
-
-                // Unwind the result if necessary
-                aggregate = aggregate.Unwind(reference.Destination?.PropertyInfo?.Name, new AggregateUnwindOptions<BsonDocument>
-                {
-                    PreserveNullAndEmptyArrays = true
-                });
-
-                // Convert ObjectId back to string
-                aggregate = aggregate.AppendStage<BsonDocument>(new BsonDocument("$addFields", new BsonDocument
-                {
-                    { reference.EqualityProperty.Name, new BsonDocument("$toString", $"${reference.EqualityProperty.Name}") }
-                }));
-            }
-
-            var bsonResult = aggregate.FirstOrDefault();
-
-            if (bsonResult != null)
-            {
-                // Map the BsonDocument to the strongly-typed object T
-                return BsonSerializer.Deserialize<T>(bsonResult);
-            }
-
-            return default;
-        }
-
-        return Get().FirstOrDefault();
-    }
+        => Get().FirstOrDefault(_includeReferences, DbContext);
 
     public T? FirstOrDefault(Expression<Func<T, bool>> predicate)
         => Get(predicate).FirstOrDefault(_includeReferences, DbContext);
@@ -350,8 +305,7 @@ public class Collection<T> where T : BaseEntity
         foreach (var propertyInfo in properties)
         {
             var refAttribute = propertyInfo.GetCustomAttribute<ReferenceTo>();
-            if (refAttribute is not null && !string.IsNullOrEmpty(refAttribute.Entity) &&
-                refAttribute.Entity == property.PropertyType.Name)
+            if (refAttribute is not null && !string.IsNullOrEmpty(refAttribute.Entity))
             {
                 refProperty = propertyInfo;
                 refPropertyName = refAttribute.Entity;
@@ -465,9 +419,6 @@ public class Collection<T> where T : BaseEntity
         return base.ToString();
     }
 
-    private bool CheckCacheablityOfTEntity()
-        => typeof(T).GetCustomAttributes(typeof(Cacheable), true).Any();
-
     private void UpdateCache()
     {
         _cache = Source.Find(FilterDefinition<T>.Empty);
@@ -475,6 +426,13 @@ public class Collection<T> where T : BaseEntity
 
     private IFindFluent<T, T> Get(FilterDefinition<T>? filter = null)
     {
+        StackTrace stackTrace = new StackTrace();
+        string callers = string.Join(", ", stackTrace.GetFrames()!.Take(3).Select(x => x.GetMethod()!.Name));
+
+#if DEBUG
+        Console.WriteLine($"Call: {typeof(T).Name}, Called from: {callers}");
+#endif
+
         if (!_isCacheable || _cache == null)
         {
             _cache = Source.Find(filter ?? FilterDefinition<T>.Empty);

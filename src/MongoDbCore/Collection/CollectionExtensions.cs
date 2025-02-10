@@ -11,10 +11,6 @@ public static class CollectionExtensions
 
     public static List<T> Take<T>(this IFindFluent<T, T> findFluent, int count)
         => findFluent.Limit(count).ToList();
-
-    public static IFindFluent<T, T> Take<T>(this Collection<T> collection, int count)
-        where T : BaseEntity
-        => collection.Where(x => true).Limit(count);
     #endregion
 
     #region ToList
