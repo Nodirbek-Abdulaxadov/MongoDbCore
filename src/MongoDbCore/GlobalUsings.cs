@@ -10,3 +10,4 @@ global using MongoDB.Bson.Serialization;
 global using MongoDB.Driver.Core.Misc;
 global using System.Reflection;
 global using System.Collections;
+global using System.Diagnostics;

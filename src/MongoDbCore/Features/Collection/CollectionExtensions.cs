@@ -9,6 +9,10 @@
 
     public static List<T> Take<T>(this IFindFluent<T, T> findFluent, int count)
         => findFluent.Limit(count).ToList();
+
+    public static Task<List<T>> TakeAsync<T>(this IFindFluent<T, T> findFluent, int count, CancellationToken cancellationToken = default)
+        => findFluent.Limit(count).ToListAsync(cancellationToken);
+
     #endregion
 
     #region ToList
@@ -236,7 +240,7 @@
             }
         };
 
-        return new IncludableQueryable<T, TProperty>(new Collection<T>(dbContext!), [reference]);
+        return new IncludableQueryable<T, TProperty>(new Collection<T>(dbContext!, null), [reference]);
     }
 
     public static IIncludableQueryable<T, TProperty> IncludeRef<T, TProperty>(this IFindFluent<T, T> findFluent, Expression<Func<T, TProperty>> includeExpression)
@@ -278,7 +282,7 @@
             }
         };
 
-        return new IncludableQueryable<T, TProperty>(new Collection<T>(dbContext!), [reference]);
+        return new IncludableQueryable<T, TProperty>(new Collection<T>(dbContext!, null), [reference]);
     }
 
     public static IIncludableQueryable<T, TProperty> Include<T, TProperty>(this IFindFluent<T, T> findFluent, Expression<Func<T, IEnumerable<TProperty>>> includeExpression)
@@ -338,7 +342,7 @@
             }
         };
 
-        return new IncludableQueryable<T, TProperty>(new Collection<T>(dbContext!), [reference], findFluent.Filter);
+        return new IncludableQueryable<T, TProperty>(new Collection<T>(dbContext!, null), [reference], findFluent.Filter);
     }
     #endregion
 

@@ -1,5 +1,7 @@
 ﻿public abstract class MongoDbContext
 {
+    public Collection<AuditEntity> Audits { get; set; } = null!;
+
     private readonly MongoDbCoreOptions _options;
     private IMongoClient _client;
     private static IMongoDatabase? _staticDatabase;

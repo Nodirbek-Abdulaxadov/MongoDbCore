@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using MongoDB.Bson.IO;
+using System.Text.Json;
 
 public class Collection<T> where T : BaseEntity
 {
@@ -8,15 +9,20 @@ public class Collection<T> where T : BaseEntity
     public readonly MongoDbContext DbContext;
     public readonly string CollectionName = string.Empty;
 
-    private readonly bool _isCacheable;
-    private IFindFluent<T, T>? _cache;
+    private readonly bool _isAuditable;
+    private IAuditService? _auditService;
     private List<IncludeReference> _includeReferences = [];
 
-    public Collection(MongoDbContext dbContext)
+    public Collection(MongoDbContext dbContext, IAuditService? auditService)
     {
         DbContext = dbContext;
         CollectionName = typeof(T).Name.Pluralize().Underscore();
         Source = dbContext.GetCollection<T>(CollectionName);
+        _isAuditable = CheckAuditableOfTEntity();
+        if (auditService is not null)
+        {
+            _auditService = auditService;
+        }
     }
 
     #endregion
@@ -65,6 +71,9 @@ public class Collection<T> where T : BaseEntity
     public long Count()
         => Source!.CountDocuments(FilterDefinition<T>.Empty);
 
+    public Task<long> CountAsync()
+        => Source!.CountDocumentsAsync(FilterDefinition<T>.Empty);
+
     public List<TDto> Get<TDto>()
     {
         return DbContext.GetCollection<TDto>(typeof(T).Name.Pluralize().Underscore()).Find(_=>true).ToList();
@@ -80,8 +89,8 @@ public class Collection<T> where T : BaseEntity
         {
             entity.Id = BaseEntity.NewId;
         }
+        CheckAudit(ActionType.Add, entity);
         Source!.InsertOne(entity);
-        if (_isCacheable) UpdateCache();
         return entity;
     }
 
@@ -92,21 +101,18 @@ public class Collection<T> where T : BaseEntity
             entity.Id = BaseEntity.NewId;
         }
         await Source!.InsertOneAsync(entity, null, cancellationToken);
-        if (_isCacheable) UpdateCache();
         return entity;
     }
 
     public IEnumerable<T> AddRange(IEnumerable<T> entities)
     {
         Source!.InsertMany(entities);
-        if (_isCacheable) UpdateCache();
         return entities;
     }
 
     public async Task<IEnumerable<T>> AddRangeAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
     {
         await Source!.InsertManyAsync(entities, null, cancellationToken);
-        if (_isCacheable) UpdateCache();
         return entities;
     }
 
@@ -114,7 +120,6 @@ public class Collection<T> where T : BaseEntity
     {
         entity.UpdatedAt = DateTime.Now;
         Source!.ReplaceOne(x => x.Id == entity.Id, entity);
-        if (_isCacheable) UpdateCache();
         return entity;
     }
 
@@ -123,7 +128,6 @@ public class Collection<T> where T : BaseEntity
         entity.UpdatedAt = DateTime.Now;
         var replaceOptions = new ReplaceOptions();
         await Source!.ReplaceOneAsync(x => x.Id == entity.Id, entity, replaceOptions, cancellationToken);
-        if (_isCacheable) UpdateCache();
         return entity;
     }
 
@@ -183,13 +187,11 @@ public class Collection<T> where T : BaseEntity
     public void Delete(string id)
     {
         Source!.DeleteOne(Builders<T>.Filter.Eq(x => x.Id, id));
-        if (_isCacheable) UpdateCache();
     }
 
     public async Task DeleteAsync(string id, CancellationToken cancellationToken = default)
     {
         await Source!.DeleteOneAsync(Builders<T>.Filter.Eq(x => x.Id, id), cancellationToken);
-        if (_isCacheable) UpdateCache();
     }
 
     public void Delete(T entity)
@@ -202,14 +204,12 @@ public class Collection<T> where T : BaseEntity
     {
         var ids = entities.Select(x => x.Id).ToList();
         Source!.DeleteMany(Builders<T>.Filter.In(x => x.Id, ids));
-        if (_isCacheable) UpdateCache();
     }
 
     public async Task DeleteRangeAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
     {
         var ids = entities.Select(x => x.Id).ToList();
         await Source!.DeleteManyAsync(Builders<T>.Filter.In(x => x.Id, ids), cancellationToken);
-        if (_isCacheable) UpdateCache();
     }
 
     public void DeleteMany(Expression<Func<T, bool>> filter)
@@ -221,13 +221,11 @@ public class Collection<T> where T : BaseEntity
     public void DeleteAll()
     {
         Source!.DeleteMany(FilterDefinition<T>.Empty);
-        if (_isCacheable) UpdateCache();
     }
 
     public async Task DeleteAllAsync(CancellationToken cancellationToken = default)
     {
         await Source!.DeleteManyAsync(FilterDefinition<T>.Empty, cancellationToken);
-        if (_isCacheable) UpdateCache();
     }
 
     #endregion
@@ -417,10 +415,8 @@ public class Collection<T> where T : BaseEntity
         return base.ToString();
     }
 
-    private void UpdateCache()
-    {
-        _cache = Source.Find(FilterDefinition<T>.Empty);
-    }
+    private bool CheckAuditableOfTEntity()
+        => typeof(T).GetCustomAttributes(typeof(Auditable), true).Any();
 
     private IFindFluent<T, T> Get(FilterDefinition<T>? filter = null)
     {
@@ -431,13 +427,34 @@ public class Collection<T> where T : BaseEntity
         Console.WriteLine($"Call: {typeof(T).Name}, Called from: {callers}");
 #endif
 
-        if (!_isCacheable || _cache == null)
-        {
-            _cache = Source.Find(filter ?? FilterDefinition<T>.Empty);
-            return _cache;
-        }
+        return Source.Find(filter ?? FilterDefinition<T>.Empty);
+    }
 
-        return _cache;
+    #endregion
+
+    #region Check Audit
+
+    private void CheckAudit(ActionType actionType, T entity)
+    {
+        if (_isAuditable)
+        {
+            if (_auditService is null)
+            {
+                throw new InvalidOperationException("IAuditService was not registered in the DI container.");
+            }
+
+            var oldEntity = FirstOrDefault(x => x.Id == entity.Id);
+
+            AuditEntity auditEntity = new()
+            {
+                ActionType = actionType,
+                Collection = CollectionName,
+                OldValue = oldEntity == null ? string.Empty : JsonSerializer.Serialize(oldEntity),
+                NewValue = JsonSerializer.Serialize(entity)
+            };
+
+            _auditService.Add(auditEntity);
+        }
     }
 
     #endregion

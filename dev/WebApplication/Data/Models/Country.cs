@@ -1,4 +1,5 @@
-﻿public class Country : BaseEntity
+﻿[Auditable]
+public class Country : BaseEntity
 {
     public string Name { get; set; } = string.Empty;
 

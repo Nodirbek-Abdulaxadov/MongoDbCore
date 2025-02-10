@@ -1,8 +1,9 @@
 ﻿public static class MongoDbCoreExtensions
 {
     public static void AddMongoDbContext<TDbContext>(this IServiceCollection services, MongoDbCoreOptions? options = null)
-        where TDbContext : MongoDbContext // Remove the nullable indicator (?) here
+        where TDbContext : MongoDbContext
     {
+        services.AddTransient<IAuditService, AuditService>();
         services.AddSingleton(provider =>
         {
             StaticServiceLocator.ServiceProvider = provider;
@@ -24,6 +25,8 @@
 
             dbContext!.HealthCheckDB();
 
+            IAuditService auditService = new AuditService();
+
             // Get all properties of TDbContext
             var properties = typeof(TDbContext).GetProperties();
             foreach (var property in properties)
@@ -35,7 +38,7 @@
                     var entityType = property.PropertyType.GetGenericArguments()[0];
 
                     // Create an instance of Collection<TEntity> with the entity type and database instance
-                    var collectionInstance = Activator.CreateInstance(typeof(Collection<>).MakeGenericType(entityType), dbContext);
+                    var collectionInstance = Activator.CreateInstance(typeof(Collection<>).MakeGenericType(entityType), dbContext, auditService);
 
                     // Set the collection instance to the property
                     property.SetValue(dbContext, collectionInstance);
@@ -56,6 +59,7 @@
             }
             dbContext!.Initialize();
             StaticServiceLocator.DbContext = dbContext;
+            
             return dbContext;
         });
     }
