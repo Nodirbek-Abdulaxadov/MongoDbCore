@@ -1,7 +1,5 @@
 ﻿using System.Diagnostics;
 
-namespace MongoDbCore;
-
 public class Collection<T> where T : BaseEntity
 {
     #region Initialize

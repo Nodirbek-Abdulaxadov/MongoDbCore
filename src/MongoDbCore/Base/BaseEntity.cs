@@ -1,6 +1,4 @@
-﻿namespace MongoDbCore;
-
-[BsonIgnoreExtraElements(Inherited = true)]
+﻿[BsonIgnoreExtraElements(Inherited = true)]
 public abstract class BaseEntity
 {
     [Key]

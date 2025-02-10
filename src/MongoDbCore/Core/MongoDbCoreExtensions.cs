@@ -1,6 +1,4 @@
-﻿namespace MongoDbCore;
-
-public static class MongoDbCoreExtensions
+﻿public static class MongoDbCoreExtensions
 {
     public static void AddMongoDbContext<TDbContext>(this IServiceCollection services, MongoDbCoreOptions? options = null)
         where TDbContext : MongoDbContext // Remove the nullable indicator (?) here

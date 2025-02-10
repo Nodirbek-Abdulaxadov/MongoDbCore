@@ -1,6 +1,4 @@
-﻿namespace MongoDbCore.Releationships;
-
-public interface IIncludableQueryable<T, T2> where T : BaseEntity
+﻿public interface IIncludableQueryable<T, T2> where T : BaseEntity
 {
     #region Properties
     Collection<T> Collection { get; }

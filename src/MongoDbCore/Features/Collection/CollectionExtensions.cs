@@ -1,6 +1,4 @@
-﻿namespace MongoDbCore;
-
-public static class CollectionExtensions
+﻿public static class CollectionExtensions
 {
     #region Sorting and Filtering
     public static IFindFluent<T, T> OrderBy<T>(this IFindFluent<T, T> findFluent, Expression<Func<T, object>> expression)

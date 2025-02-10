@@ -1,6 +1,4 @@
-﻿namespace MongoDbCore.Attributes;
-
-[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+﻿[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
 public class ForeignKeyTo : Attribute
 {
     public string? Entity { get; set; } = string.Empty;

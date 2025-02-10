@@ -1,6 +1,4 @@
-﻿namespace MongoDbCore;
-
-/// <summary>
+﻿/// <summary>
 /// Cached Collection for best read time
 /// References are not available now
 /// </summary>

@@ -1,4 +1,4 @@
-namespace WebApplication1.Data;
+namespace WebApp.Data;
 
 public class WeatherForecast : BaseEntity
 {

@@ -1,46 +1,36 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <Version>1.4.1</Version>
-    <PackageIcon>GFz_P-5e_400x400.png</PackageIcon>
-    <Authors>Nodirbek Abdulakhadov</Authors>
-    <Description>MicroOrm for MongoDb</Description>
-    <PackageProjectUrl>https://github.com/Nodirbek-Abdulaxadov/MongoDbCore</PackageProjectUrl>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <RepositoryUrl>https://github.com/Nodirbek-Abdulaxadov/MongoDbCore</RepositoryUrl>
-    <PackageTags>csharp, mongodb, orm</PackageTags>
-    <PackageReleaseNotes>SelfCached Collection added for best time read perfomance</PackageReleaseNotes>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<Version>1.4.1</Version>
+		<PackageIcon>GFz_P-5e_400x400.png</PackageIcon>
+		<Authors>Nodirbek Abdulakhadov</Authors>
+		<Description>MicroOrm for MongoDb</Description>
+		<PackageProjectUrl>https://github.com/Nodirbek-Abdulaxadov/MongoDbCore</PackageProjectUrl>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<RepositoryUrl>https://github.com/Nodirbek-Abdulaxadov/MongoDbCore</RepositoryUrl>
+		<PackageTags>csharp, mongodb, orm</PackageTags>
+		<PackageReleaseNotes>SelfCached Collection added for best time read perfomance</PackageReleaseNotes>
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>
+		<RootNamespace>MongoDbCore</RootNamespace>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <Resource Include="GFz_P-5e_400x400.png" />
-  </ItemGroup>
+	<ItemGroup>
+		<None Include="..\..\LICENSE">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+		<None Include="..\..\README.md">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+	</ItemGroup>
 
-  <ItemGroup>
-    <None Include="..\..\LICENSE">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
-    <None Include="..\..\README.md">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="MongoDB.Driver" Version="2.26.0" />
-	  <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.11" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="GFz_P-5e_400x400.png">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="MongoDB.Driver" Version="2.26.0" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.11" />
+	</ItemGroup>
 
 </Project>

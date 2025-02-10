@@ -1,6 +1,4 @@
-﻿namespace MongoDbCore.Helpers;
-
-public class IncludeReference
+﻿public class IncludeReference
 {
     public PropertyInfo EqualityProperty { get; set; } = null!;
     public byte Order { get; set; }

@@ -1,6 +1,4 @@
-﻿namespace MongoDbCore;
-
-public abstract class MongoDbContext
+﻿public abstract class MongoDbContext
 {
     private readonly MongoDbCoreOptions _options;
     private IMongoClient _client;

@@ -1,6 +1,4 @@
-﻿namespace MongoDbCore.Releationships;
-
-public class IncludableQueryable<T, T2>(Collection<T> collection, List<IncludeReference> includeReferences, FilterDefinition<T>? filter = null) 
+﻿public class IncludableQueryable<T, T2>(Collection<T> collection, List<IncludeReference> includeReferences, FilterDefinition<T>? filter = null)
     : IIncludableQueryable<T, T2> where T : BaseEntity
 {
     #region Fields
@@ -249,7 +247,7 @@ public class IncludableQueryable<T, T2>(Collection<T> collection, List<IncludeRe
     public List<T> ToList()
     {
         filter ??= FilterDefinition<T>.Empty;
-        var result = CollectionExtensions.ToList(collection.Where(filter), IncludeReferences, collection.DbContext);
+        var result = collection.Where(filter).ToList(IncludeReferences, collection.DbContext);
         IncludeReferences.Clear();
         return result;
     }
@@ -257,7 +255,7 @@ public class IncludableQueryable<T, T2>(Collection<T> collection, List<IncludeRe
     public Task<List<T>> ToListAsync()
     {
         filter ??= FilterDefinition<T>.Empty;
-        var result = CollectionExtensions.ToListAsync(collection.Where(filter), IncludeReferences, collection.DbContext);
+        var result = collection.Where(filter).ToListAsync(IncludeReferences, collection.DbContext);
         IncludeReferences.Clear();
         return result;
     }

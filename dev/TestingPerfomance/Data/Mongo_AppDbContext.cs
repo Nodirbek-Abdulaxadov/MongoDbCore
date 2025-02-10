@@ -1,5 +1,4 @@
-﻿
-namespace TestingPerfomance;
+﻿namespace TestingPerfomance;
 
 public class Mongo_AppDbContext : MongoDbContext
 {

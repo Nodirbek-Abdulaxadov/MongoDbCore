@@ -1,6 +1,4 @@
-﻿namespace MongoDbCore.Helpers;
-
-internal static class Inflector
+﻿internal static class Inflector
 {
     private static readonly List<Rule> _plurals = new List<Rule>();
     private static readonly List<Rule> _singulars = new List<Rule>();
@@ -104,10 +102,10 @@ internal static class Inflector
         AddSingular("(" + plural[0] + ")" + plural.Substring(1) + "$", "$1" + singular.Substring(1));
     }
 
-    private static void AddUncountable(string word) 
+    private static void AddUncountable(string word)
         => _uncountables.Add(word.ToLower());
 
-    private static void AddPlural(string rule, string replacement) 
+    private static void AddPlural(string rule, string replacement)
         => _plurals.Add(new Rule(rule, replacement));
 
     private static void AddSingular(string rule, string replacement)
@@ -137,6 +135,6 @@ internal static class Inflector
     internal static string Underscore(this string pascalCasedWord)
         => Regex.Replace(
            Regex.Replace(
-           Regex.Replace(pascalCasedWord, @"([A-Z]+)([A-Z][a-z])", "$1_$2"), 
+           Regex.Replace(pascalCasedWord, @"([A-Z]+)([A-Z][a-z])", "$1_$2"),
                          @"([a-z\d])([A-Z])", "$1_$2"), @"[-\s]", "_").ToLower();
 }
