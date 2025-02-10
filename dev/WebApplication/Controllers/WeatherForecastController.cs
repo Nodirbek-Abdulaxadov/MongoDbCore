@@ -1,5 +1,3 @@
-/*namespace WebApplication1.Controllers;
-
 [ApiController]
 [Route("[controller]")]
 public class WeatherForecastController(AppDbContext dbContext) : ControllerBase
@@ -77,4 +75,4 @@ public class WeatherForecastController(AppDbContext dbContext) : ControllerBase
             return BadRequest(ex.Message);
         }
     }
-}*/
+}

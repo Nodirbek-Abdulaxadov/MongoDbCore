@@ -1,8 +1,4 @@
-﻿using WebApplication1.Data.Models;
-
-namespace WebApplication1.Data;
-
-public class AppDbContext : MongoDbContext
+﻿public class AppDbContext : MongoDbContext
 {
     public Collection<WeatherForecast> WeatherForecasts { get; set; } = null!;
     public SelfCachedCollection<WeatherForecast> WeatherForecastsCached { get; set; } = null!;

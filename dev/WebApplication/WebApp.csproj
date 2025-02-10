@@ -4,17 +4,15 @@
 		<TargetFramework>net9.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
+		<RootNamespace>WebApp</RootNamespace>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="LazyData_Alfa_0_0_1" Version="0.0.2" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\MongoDbCore.Identity\MongoDbCore.Identity.csproj" />
-		<ProjectReference Include="..\..\src\MongoDbCore.Identity\MongoDbCore.Identity.csproj" />
-		<ProjectReference Include="..\..\src\MongoDbCore\MongoDbCore.csproj" />
+	  <ProjectReference Include="..\..\src\MongoDbCore\MongoDbCore.csproj" />
 	</ItemGroup>
 
 </Project>
