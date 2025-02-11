@@ -1,4 +1,4 @@
-﻿public class AuditEntity : BaseEntity
+﻿public class Audit : BaseEntity
 {
     public string OldValue { get; set; } = string.Empty;
     public string NewValue { get; set; } = string.Empty;

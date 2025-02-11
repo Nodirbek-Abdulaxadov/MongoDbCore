@@ -1,4 +1,4 @@
-﻿using MongoDB.Bson.IO;
+﻿using SharpCompress.Common;
 using System.Text.Json;
 
 public class Collection<T> where T : BaseEntity
@@ -85,12 +85,12 @@ public class Collection<T> where T : BaseEntity
 
     public T Add(T entity)
     {
-        if (string.IsNullOrEmpty(entity.Id))
+        if (ObjectId.TryParse(entity.Id, out var id))
         {
             entity.Id = BaseEntity.NewId;
         }
-        CheckAudit(ActionType.Add, entity);
         Source!.InsertOne(entity);
+        CheckAudit(ActionType.Add, null, entity);
         return entity;
     }
 
@@ -101,24 +101,28 @@ public class Collection<T> where T : BaseEntity
             entity.Id = BaseEntity.NewId;
         }
         await Source!.InsertOneAsync(entity, null, cancellationToken);
+        CheckAudit(ActionType.Add, null, entity);
         return entity;
     }
 
     public IEnumerable<T> AddRange(IEnumerable<T> entities)
     {
         Source!.InsertMany(entities);
+        CheckAudit(ActionType.AddRange, entities, null);
         return entities;
     }
 
     public async Task<IEnumerable<T>> AddRangeAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
     {
         await Source!.InsertManyAsync(entities, null, cancellationToken);
+        CheckAudit(ActionType.AddRange, entities, null);
         return entities;
     }
 
     public T Update(T entity)
     {
         entity.UpdatedAt = DateTime.Now;
+        CheckAudit(ActionType.Update, entity.Id, entity);
         Source!.ReplaceOne(x => x.Id == entity.Id, entity);
         return entity;
     }
@@ -127,6 +131,7 @@ public class Collection<T> where T : BaseEntity
     {
         entity.UpdatedAt = DateTime.Now;
         var replaceOptions = new ReplaceOptions();
+        CheckAudit(ActionType.Update, entity.Id, entity);
         await Source!.ReplaceOneAsync(x => x.Id == entity.Id, entity, replaceOptions, cancellationToken);
         return entity;
     }
@@ -186,19 +191,27 @@ public class Collection<T> where T : BaseEntity
 
     public void Delete(string id)
     {
+        CheckAudit(ActionType.Delete, id, null);
         Source!.DeleteOne(Builders<T>.Filter.Eq(x => x.Id, id));
     }
 
     public async Task DeleteAsync(string id, CancellationToken cancellationToken = default)
     {
+        CheckAudit(ActionType.Delete, id, null);
         await Source!.DeleteOneAsync(Builders<T>.Filter.Eq(x => x.Id, id), cancellationToken);
     }
 
     public void Delete(T entity)
-        => Delete(entity.Id);
+    {
+        CheckAudit(ActionType.Delete, entity.Id, null);
+        Delete(entity.Id);
+    }
 
     public Task DeleteAsync(T entity, CancellationToken cancellationToken = default)
-        => DeleteAsync(entity.Id, cancellationToken);
+    {
+        CheckAudit(ActionType.Delete, entity.Id, null);
+        return DeleteAsync(entity.Id, cancellationToken);
+    }
 
     public void DeleteRange(IEnumerable<T> entities)
     {
@@ -434,7 +447,7 @@ public class Collection<T> where T : BaseEntity
 
     #region Check Audit
 
-    private void CheckAudit(ActionType actionType, T entity)
+    private void CheckAudit(ActionType actionType, string? oldId = null, T? entity = null)
     {
         if (_isAuditable)
         {
@@ -443,14 +456,69 @@ public class Collection<T> where T : BaseEntity
                 throw new InvalidOperationException("IAuditService was not registered in the DI container.");
             }
 
-            var oldEntity = FirstOrDefault(x => x.Id == entity.Id);
+            string oldValue = string.Empty;
+            string newValue = string.Empty;
+
+            if (!string.IsNullOrEmpty(oldId))
+            {
+                var oldEntity = FirstOrDefault(x => x.Id == oldId);
+                if (oldEntity is not null)
+                {
+                    oldValue = JsonSerializer.Serialize(oldEntity);
+                }
+            }
+
+            if (entity is not null)
+            {
+                newValue = JsonSerializer.Serialize(entity);
+            }
+
 
             AuditEntity auditEntity = new()
             {
                 ActionType = actionType,
                 Collection = CollectionName,
-                OldValue = oldEntity == null ? string.Empty : JsonSerializer.Serialize(oldEntity),
-                NewValue = JsonSerializer.Serialize(entity)
+                OldValue = oldValue,
+                NewValue = newValue
+            };
+
+            _auditService.Add(auditEntity);
+        }
+    }
+
+    private void CheckAudit(ActionType actionType, IEnumerable<T> entities, string? oldId = null)
+    {
+        if (_isAuditable)
+        {
+            if (_auditService is null)
+            {
+                throw new InvalidOperationException("IAuditService was not registered in the DI container.");
+            }
+
+            string oldValue = string.Empty;
+            string newValue = string.Empty;
+
+            if (!string.IsNullOrEmpty(oldId))
+            {
+                var oldEntity = FirstOrDefault(x => x.Id == oldId);
+                if (oldEntity is not null)
+                {
+                    oldValue = JsonSerializer.Serialize(oldEntity);
+                }
+            }
+
+            if (entities.Any())
+            {
+                newValue = JsonSerializer.Serialize(entities);
+            }
+
+
+            AuditEntity auditEntity = new()
+            {
+                ActionType = actionType,
+                Collection = CollectionName,
+                OldValue = oldValue,
+                NewValue = newValue
             };
 
             _auditService.Add(auditEntity);

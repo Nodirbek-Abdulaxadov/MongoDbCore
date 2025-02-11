@@ -3,7 +3,7 @@
     public static void AddMongoDbContext<TDbContext>(this IServiceCollection services, MongoDbCoreOptions? options = null)
         where TDbContext : MongoDbContext
     {
-        services.AddTransient<IAuditService, AuditService>();
+        services.AddScoped<IAuditService, AuditService>();
         services.AddSingleton(provider =>
         {
             StaticServiceLocator.ServiceProvider = provider;

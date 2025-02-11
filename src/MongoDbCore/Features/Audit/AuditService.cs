@@ -9,6 +9,7 @@
             throw new InvalidOperationException("Audit user not initialized!");
         }
 
+        entity.User = User;
         StaticServiceLocator.DbContext!.Audits.Add(entity);
     }
 
