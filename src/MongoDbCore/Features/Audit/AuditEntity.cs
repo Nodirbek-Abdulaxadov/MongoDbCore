@@ -1,4 +1,9 @@
-﻿public class Audit : BaseEntity
+namespace MongoDbCore;
+
+/// <summary>
+/// Represents a single audited mutation against a tracked collection.
+/// </summary>
+public class AuditEntity : BaseEntity
 {
     public string OldValue { get; set; } = string.Empty;
     public string NewValue { get; set; } = string.Empty;

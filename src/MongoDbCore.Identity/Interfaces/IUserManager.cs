@@ -12,7 +12,7 @@ public interface IUserManager<TUser> : IDisposable where TUser : IdentityUser
     /// <param name="userId">The identifier of the user.</param>
     /// <param name="cancellationToken">The cancellation token to monitor for cancellation requests.</param>
     /// <returns>A task that represents the asynchronous operation, containing the user if found, otherwise null.</returns>
-    Task<TUser> FindByIdAsync(string userId, CancellationToken cancellationToken = default);
+    Task<TUser?> FindByIdAsync(string userId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Finds a user by their username.
@@ -20,7 +20,7 @@ public interface IUserManager<TUser> : IDisposable where TUser : IdentityUser
     /// <param name="userName">The username of the user.</param>
     /// <param name="cancellationToken">The cancellation token to monitor for cancellation requests.</param>
     /// <returns>A task that represents the asynchronous operation, containing the user if found, otherwise null.</returns>
-    Task<TUser> FindByNameAsync(string userName, CancellationToken cancellationToken = default);
+    Task<TUser?> FindByNameAsync(string userName, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Creates a new user.

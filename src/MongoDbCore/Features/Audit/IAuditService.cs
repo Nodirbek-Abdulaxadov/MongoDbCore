@@ -1,10 +1,19 @@
-﻿public interface IAuditService
-{
-    dynamic? User { get; set; }
+namespace MongoDbCore;
 
+/// <summary>
+/// Records changes against entities decorated with <see cref="Auditable"/>.
+/// </summary>
+public interface IAuditService
+{
+    /// <summary>User identifier attached to each audit entry.</summary>
+    string? User { get; set; }
+
+    /// <summary>Records a single audit event.</summary>
     void Add(AuditEntity entity);
 
-    Task<(List<AuditEntity> Items, long count)> GetAll(int pageSize = 10, int page = 1, CancellationToken cancellationToken = default);
+    /// <summary>Paginates audit events.</summary>
+    Task<(List<AuditEntity> Items, long Count)> GetAllAsync(int pageSize = 10, int page = 1, CancellationToken cancellationToken = default);
 
-    Task<AuditEntity> GetAsync(string id, CancellationToken cancellationToken = default);
+    /// <summary>Looks up a single audit event by id.</summary>
+    Task<AuditEntity?> GetAsync(string id, CancellationToken cancellationToken = default);
 }

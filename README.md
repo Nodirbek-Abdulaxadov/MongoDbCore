@@ -1,125 +1,161 @@
 # MongoDbCore
 
-## Latest stable version 1.4.0
+[![NuGet](https://img.shields.io/nuget/v/MongoDbCore.svg)](https://www.nuget.org/packages/MongoDbCore/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-[`https://www.nuget.org/packages/MongoDbCore/`](https://www.nuget.org/packages/MongoDbCore/)
+A lightweight micro-ORM for MongoDB on .NET 8 and .NET 9. Built on top of
+`MongoDB.Driver` 2.x with an EF-Core-flavoured surface: a `MongoDbContext`
+that exposes typed `Collection<T>` properties, conventional collection naming,
+`Include`/`IncludeRef` eager loading, optional auditing, and an in-memory
+`SelfCachedCollection<T>` for read-heavy workloads.
 
+## Install
 
-MongoDbCore is a lightweight micro-ORM for .NET designed to simplify interactions with MongoDB. It provides a straightforward API for performing common database operations, enabling developers to build applications quickly and efficiently.
-
-## Key Features
-
-- **Easy Setup**: Simple configuration to get started with MongoDB.
-- **CRUD Operations**: Supports Create, Read, Update, and Delete operations seamlessly.
-- **Asynchronous Support**: Perform database operations asynchronously for better performance.
-- **Performance Optimizations**: Designed for efficient use of memory and speed.
-
-## Installation
-
-To install MongoDbCore, add it to your project using NuGet:
-
-```dotnet add package MongoDbCore```
-
-## Getting Started
-
-### Configuration
-
-To configure MongoDbCore, follow these steps:
-
-1. **Set Up Your MongoDB Connection**: Define your MongoDB connection string in your application settings.
+```bash
+dotnet add package MongoDbCore
 ```
+
+## Quick start
+
+```jsonc
+// appsettings.json
 "MongoDB": {
-    "Connection": "mongodb://localhost:27017",
-    "Database": "database_name",
-    "MaxConnectionPoolSize": 100 //default
+  "Connection": "mongodb://localhost:27017",
+  "Database": "myapp",
+  "MaxConnectionPoolSize": 100,
+  "EnableAuditing": false
 }
 ```
 
-2. **Initialize MongoDbCore**: Configure the MongoDbCore context in your `Program.cs`:
-
-```
-// Setup the application and services
-builder.Services.AddMongoDbContext<AppDbContext>(builder.Configuration
-                                                        .GetSection("MongoDB")
-                                                        .Get<MongoDbCoreOptions>()!);
+```csharp
+// Program.cs
+builder.Services.AddMongoDbContext<AppDbContext>(
+    builder.Configuration.GetSection("MongoDB").Get<MongoDbCoreOptions>()!);
 ```
 
-### Create TodoEntity based on BaseEntity
-
-Create a class that inherits from `MongoDbContext` to define your database context:
-
-```
-public class Todo : BaseEntity
-{
-    public string Task { get; set; } = string.Empty;
-}
-```
-
-### Setting Up the Database Context
-
-Create a class that inherits from `MongoDbContext` to define your database context:
-
-```
+```csharp
+// AppDbContext.cs
 public class AppDbContext(MongoDbCoreOptions options) : MongoDbContext(options)
 {
     public Collection<Todo> Todos { get; set; } = null!;
+    public SelfCachedCollection<Country> Countries { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
     {
-        // Initialize data if necessary
+        // seed indexes / initial data here
+        return Task.CompletedTask;
     }
 }
 ```
 
-### Basic CRUD Operations
-
-MongoDbCore simplifies CRUD operations. Here's how you can use it:
-
-#### Inject AppDbContext in your service class:
-
-```
-public class TodoService(AppDbContext dbContext)
-{ }
+```csharp
+// Todo.cs
+public class Todo : BaseEntity
+{
+    public string Task { get; set; } = string.Empty;
+    public bool IsDone { get; set; }
+}
 ```
 
-#### Create
-To create a new entity:
+```csharp
+// usage
+public class TodoService(AppDbContext db)
+{
+    public Task<List<Todo>> ListAsync(CancellationToken ct) =>
+        db.Todos.ToListAsync(ct);
 
-```
-Todo newTodo = new();
-dbContext.Todos.Add(newTodo);
-```
+    public Task<Todo> AddAsync(string task, CancellationToken ct) =>
+        db.Todos.AddAsync(new Todo { Task = task }, ct);
 
-#### Read
-To retrieve an entity:
+    public Task<Todo?> GetAsync(string id, CancellationToken ct) =>
+        db.Todos.FirstOrDefaultAsync(t => t.Id == id, ct);
 
-```
-var todos = dbContext.Todos.ToList();
-```
+    public Task<Todo> UpdateAsync(Todo t, CancellationToken ct) =>
+        db.Todos.UpdateAsync(t, ct);
 
-#### Update
-
-To update an existing entity:
-
-```
-var updateTodo = dbContext.Todos.FirstOrDefault();
-dbContext.Todos.Update(updateTodo);
+    public Task DeleteAsync(string id, CancellationToken ct) =>
+        db.Todos.DeleteAsync(id, ct);
+}
 ```
 
-#### Delete
+## Collection naming
 
-To delete an entity:
+By default, the collection name is the **pluralized snake-case** form of the
+entity type name. `Todo` → `todos`. `TodoItem` → `todo_items`.
 
+## Relationships — `Include` and `IncludeRef`
+
+```csharp
+// Book has a CategoryId pointing to a Category by ObjectId.
+public class Book : BaseEntity
+{
+    public string Title { get; set; } = string.Empty;
+    [ReferenceTo(nameof(Category))] public string CategoryId { get; set; } = string.Empty;
+    public Category? Category { get; set; }
+}
+
+public class Category : BaseEntity
+{
+    public string Name { get; set; } = string.Empty;
+    [ForeignKeyTo(nameof(Book))] public List<Book> Books { get; set; } = [];
+}
+
+// Forward (parent → children):
+var category = db.Categories.Include(c => c.Books).FirstOrDefault(c => c.Id == id);
+
+// Backward (child → parent):
+var book = db.Books.IncludeRef(b => b.Category).FirstOrDefault(b => b.Id == id);
 ```
-var updateTodo = dbContext.Todos.FirstOrDefault();
-dbContext.Todos.Delete(updateTodo);
+
+## Auditing (opt-in)
+
+```csharp
+// 1) Enable
+new MongoDbCoreOptions { EnableAuditing = true, ... };
+
+// 2) Mark the entity
+[Auditable]
+public class Invoice : BaseEntity { /* ... */ }
+
+// 3) Add/Update/Delete is automatically logged to the audits collection.
+
+// 4) Resolve IAuditService to inspect:
+public class AuditController(IAuditService audits) : ControllerBase
+{
+    public Task<(List<AuditEntity>, long)> GetAll(int page = 1)
+        => audits.GetAllAsync(pageSize: 20, page: page);
+}
 ```
 
+## `SelfCachedCollection<T>` — read-heavy lookups
+
+```csharp
+public SelfCachedCollection<Country> Countries { get; set; } = null!;
+
+// Reads come from an in-memory snapshot; writes go through MongoDB and
+// refresh the cache under a lock. Eager loading (Include) isn't supported.
+var country = db.Countries.FirstOrDefault(c => c.Code == "UZ");
+```
+
+## What's new in 2.0
+
+See [CHANGELOG.md](CHANGELOG.md). Highlights: the package finally compiles
+(the `Audit` / `AuditEntity` mismatch made 1.x unusable from a fresh restore),
+auditing is opt-in, UTC timestamps, server-side `Select`, multi-target
+`net8.0;net9.0`, dropped Blazor dependency.
+
+## Building from source
+
+```bash
+dotnet restore MongoDbCore.sln
+dotnet build MongoDbCore.sln --configuration Release
+dotnet test tests/MongoDbCore.Tests/MongoDbCore.Tests.csproj --configuration Release
+```
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE).
 
 ## Contributing
 
-Contributions are welcome! Please read the [CONTRIBUTING](CONTRIBUTING.md) guide for details on how to contribute to this project.
+PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).

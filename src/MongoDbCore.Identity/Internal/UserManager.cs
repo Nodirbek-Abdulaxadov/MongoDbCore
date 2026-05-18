@@ -94,10 +94,8 @@ public class UserManager<TUser> : IUserManager<TUser> where TUser : IdentityUser
     /// <param name="userId">The unique identifier of the user.</param>
     /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>
     /// <returns>The user if found, otherwise null.</returns>
-    public async Task<TUser> FindByIdAsync(string userId, CancellationToken cancellationToken = default)
-    {
-        return await _dbContext.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
-    }
+    public Task<TUser?> FindByIdAsync(string userId, CancellationToken cancellationToken = default)
+        => _dbContext.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken)!;
 
     /// <summary>
     /// Finds a user by their username.
@@ -105,10 +103,8 @@ public class UserManager<TUser> : IUserManager<TUser> where TUser : IdentityUser
     /// <param name="userName">The username of the user.</param>
     /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>
     /// <returns>The user if found, otherwise null.</returns>
-    public async Task<TUser> FindByNameAsync(string userName, CancellationToken cancellationToken = default)
-    {
-        return await _dbContext.Users.FirstOrDefaultAsync(x => x.UserName == userName, cancellationToken);
-    }
+    public Task<TUser?> FindByNameAsync(string userName, CancellationToken cancellationToken = default)
+        => _dbContext.Users.FirstOrDefaultAsync(x => x.UserName == userName, cancellationToken)!;
 
     /// <summary>
     /// Updates the details of an existing user.
