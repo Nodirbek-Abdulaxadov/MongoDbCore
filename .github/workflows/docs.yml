@@ -10,7 +10,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/mongodbcore-docs
+  IMAGE_NAME: nodirbek-abdulaxadov/mongodbcore-docs
   GITOPS_REPO: musanna-soft/k8s-gitops
   GITOPS_FILE: apps/mongodbcore-docs/deployment.yaml
 
