@@ -14,7 +14,7 @@ public interface IRoleManager<TRole> : IDisposable where TRole : IdentityRole
     /// <param name="roleId">The identifier of the role.</param>
     /// <param name="cancellationToken">The cancellation token to monitor for cancellation requests.</param>
     /// <returns>A task that represents the asynchronous operation, containing the role if found, otherwise null.</returns>
-    Task<TRole> FindByIdAsync(string roleId, CancellationToken cancellationToken = default);
+    Task<TRole?> FindByIdAsync(string roleId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Finds a role by its normalized name.
@@ -22,7 +22,7 @@ public interface IRoleManager<TRole> : IDisposable where TRole : IdentityRole
     /// <param name="normalizedRoleName">The normalized name of the role (usually uppercase for case-insensitive comparison).</param>
     /// <param name="cancellationToken">The cancellation token to monitor for cancellation requests.</param>
     /// <returns>A task that represents the asynchronous operation, containing the role if found, otherwise null.</returns>
-    Task<TRole> FindByNameAsync(string normalizedRoleName, CancellationToken cancellationToken = default);
+    Task<TRole?> FindByNameAsync(string normalizedRoleName, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Creates a new role.

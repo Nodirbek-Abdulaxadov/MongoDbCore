@@ -1,12 +1,13 @@
-﻿public interface IIncludableQueryable<T, T2> where T : BaseEntity
+namespace MongoDbCore;
+
+/// <summary>
+/// Fluent query builder returned by <c>Include</c> / <c>IncludeRef</c>.
+/// </summary>
+public interface IIncludableQueryable<T, T2> where T : BaseEntity
 {
-    #region Properties
     Collection<T> Collection { get; }
     List<IncludeReference> GetIncludeReferences();
 
-    #endregion
-
-    #region Methods
     IIncludableQueryable<T, TProperty> Include<TProperty>(Expression<Func<T, TProperty>> include);
     IIncludableQueryable<T, TProperty> IncludeRef<TProperty>(Expression<Func<T, TProperty>> include);
 
@@ -21,6 +22,4 @@
 
     Task<T?> FirstOrDefaultAsync();
     Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate);
-
-    #endregion
 }

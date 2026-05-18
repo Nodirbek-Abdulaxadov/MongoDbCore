@@ -1,0 +1,38 @@
+name: publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+
+      - name: Restore
+        run: dotnet restore MongoDbCore.sln
+
+      - name: Build (Release)
+        run: dotnet build MongoDbCore.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test tests/MongoDbCore.Tests/MongoDbCore.Tests.csproj --configuration Release --no-build
+
+      - name: Pack
+        run: dotnet pack src/MongoDbCore/MongoDbCore.csproj --configuration Release --no-build --output ./artifacts
+
+      - name: Push to NuGet
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        if: env.NUGET_API_KEY != ''
+        run: dotnet nuget push "./artifacts/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
