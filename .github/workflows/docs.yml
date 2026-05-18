@@ -1,0 +1,95 @@
+name: Build and Deploy Docs
+
+on:
+  push:
+    branches: [ master, main ]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # Push a dedicated image name for the docs (the repo also publishes
+          # NuGet packages, so the image name needs to be distinct).
+          images: ${{ secrets.REGISTRY }}/${{ github.repository_owner }}/mongodbcore-docs
+          tags: |
+            type=sha,prefix=main-,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docs/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  update-gitops:
+    name: Update GitOps Repo
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    steps:
+      - name: Checkout GitOps repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ secrets.K8S_REPO }}
+          token: ${{ secrets.GITOPS_PAT }}
+
+      - name: Update image tag
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          IMAGE_TAG="${{ secrets.REGISTRY }}/${{ github.repository_owner }}/mongodbcore-docs:main-${SHORT_SHA}"
+
+          echo "Updating image to: $IMAGE_TAG"
+
+          FILE="${{ secrets.K8S_FILE_PATH }}"
+          if [ ! -f "$FILE" ]; then
+            echo "Error: File $FILE not found in ${{ secrets.K8S_REPO }}"
+            ls -R
+            exit 1
+          fi
+
+          sed -i "s|image:.*mongodbcore-docs.*|image: ${IMAGE_TAG}|g" "$FILE"
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git add "${{ secrets.K8S_FILE_PATH }}"
+          git commit -m "Update mongodbcore-docs image to main-$(echo ${{ github.sha }} | cut -c1-7)"
+          git push
