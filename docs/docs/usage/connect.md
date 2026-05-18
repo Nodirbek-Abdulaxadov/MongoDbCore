@@ -4,36 +4,38 @@ sidebar_position: 1
 
 # Connecting to MongoDB
 
-Define Entity Model: Create a class inheriting from BaseEntity for each model.
+Define your entity model — inherit from `BaseEntity`:
 
 ```csharp
-public class Todo : BaseEntity 
-{ 
+public class Todo : BaseEntity
+{
     public string Task { get; set; } = string.Empty;
 }
 ```
 
-Setup Database Context: Create a class inheriting from MongoDbContext to define your database context.
+`BaseEntity` gives you a Mongo-friendly `Id` (24-char ObjectId hex) plus `CreatedAt` / `UpdatedAt` written as `DateTimeOffset.UtcNow`.
+
+Create a class inheriting from `MongoDbContext` to define your database context:
 
 ```csharp
 public class AppDbContext(MongoDbCoreOptions options) : MongoDbContext(options)
-{ 
+{
     public Collection<Todo> Todos { get; set; } = null!;
-    
-    protected override async Task OnInitializedAsync()
+
+    protected override Task OnInitializedAsync()
     {
-        // Initialize data if necessary
+        // Seed data / create indexes here.
+        // This now runs to completion before the context is returned to DI.
+        return Task.CompletedTask;
     }
 }
 ```
 
-Using mongodb is very easy. Just inject your DbContext class and use it
+Inject and use:
 
 ```csharp
-
 public class TodoService(AppDbContext dbContext)
 {
-    // now dbContext ready to use
+    // dbContext is ready to use
 }
-
 ```
